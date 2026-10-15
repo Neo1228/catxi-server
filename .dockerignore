@@ -1,0 +1,17 @@
+.git
+.github
+.gradle
+.idea
+.vscode
+build
+**/build
+**/.gradle
+out
+logs
+monitoring
+.env
+.env.*
+secrets
+**/*service-account*.json
+.DS_Store
+*.log
