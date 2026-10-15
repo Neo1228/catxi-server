@@ -1,0 +1,48 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: "jdbc:mysql://${DB_HOST}:${DB_PORT}/catxi?sslMode=${DB_SSL_MODE:VERIFY_IDENTITY}&\
+      connectionTimeZone=Asia/Seoul&characterEncoding=UTF-8"
+    username: ${DB_USER}
+    password: ${DB_PW}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+      connection-timeout: 5000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      validation-timeout: 3000
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PW}
+      connect-timeout: 3s
+      timeout: 3s
+
+fcm:
+  notifications:
+    enabled: ${FCM_NOTIFICATIONS_ENABLED:true}
+
+catxi:
+  auth:
+    mode: ${CATXI_AUTH_MODE:kakao}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+logging:
+  level:
+    root: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %5p %t --- [%15.15t] %-40.40logger{39} : %m%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} %5p %t --- [%15.15t] %-40.40logger{39} : %m%n"
+  logback:
+    rollingpolicy:
+      max-file-size: 50MB
+      max-history: 5
+      total-size-cap: 300MB

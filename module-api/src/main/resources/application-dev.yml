@@ -1,0 +1,18 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
+
+catxi:
+  auth:
+    mode: ${CATXI_AUTH_MODE:local}
+logging:
+  level:
+    com.catxi: DEBUG
+    com.catxi.auth: INFO
+    org.springframework.security: INFO
+  file:
+    name: ./logs/catxi-backend-${HOSTNAME:local}-dev.log

@@ -1,0 +1,115 @@
+spring:
+  http:
+    clients:
+      connect-timeout: 3s
+      read-timeout: 5s
+  threads:
+    virtual:
+      enabled: true
+  main:
+    keep-alive: true
+  lifecycle:
+    timeout-per-shutdown-phase: 40s
+  datasource:
+    url: "jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/catxi?sslMode=${DB_SSL_MODE:DISABLED}&\
+      connectionTimeZone=Asia/Seoul"
+    username: ${DB_USER:}
+    password: ${DB_PW:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: Asia/Seoul
+  liquibase:
+    enabled: false
+  jwt:
+    header: authorization
+    secret: ${SECRET_KEY}
+    access-token-validity-in-seconds: 5400
+    refresh-token-validity-in-seconds: 604800
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      username: ${REDIS_USER:}
+      password: ${REDIS_PW:}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
+      connect-timeout: 2s
+      timeout: 2s
+  jackson:
+    time-zone: Asia/Seoul
+
+server:
+  port: 8080
+  shutdown: graceful
+
+management:
+  server:
+    port: 8081
+    address: ${MANAGEMENT_SERVER_ADDRESS:127.0.0.1}
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db,redis
+        liveness:
+          include: livenessState
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      service: catxi-backend
+      environment: ${APP_ENVIRONMENT:local}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+catxi:
+  auth:
+    mode: ${CATXI_AUTH_MODE:kakao}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+
+discord:
+  reports:
+    enabled: ${DISCORD_REPORTS_ENABLED:false}
+  webhook:
+    url: ${DISCORD_WEBHOOK_URL:}
+
+fcm:
+  notifications:
+    enabled: ${FCM_NOTIFICATIONS_ENABLED:false}
+
+logging:
+  level:
+    com.catxi: INFO
+    org.springframework.web.client: WARN
+    root: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] %logger{36} - %msg%n"
+  file:
+    name: /app/logs/catxi-backend-${HOSTNAME:local}.log
+  logback:
+    rollingpolicy:
+      total-size-cap: 100MB
+      max-file-size: 10MB
+      max-history: 7
