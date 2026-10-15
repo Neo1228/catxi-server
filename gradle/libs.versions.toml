@@ -1,0 +1,24 @@
+[versions]
+springdoc = "3.1.1"
+jjwt = "0.13.0"
+querydsl = "7.7"
+firebase-admin = "9.11.0"
+r2dbc-mysql = "1.4.3"
+
+[libraries]
+springdoc-webmvc = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
+jjwt-api = { module = "io.jsonwebtoken:jjwt-api", version.ref = "jjwt" }
+jjwt-impl = { module = "io.jsonwebtoken:jjwt-impl", version.ref = "jjwt" }
+jjwt-jackson = { module = "io.jsonwebtoken:jjwt-jackson", version.ref = "jjwt" }
+querydsl-jpa = { module = "io.github.openfeign.querydsl:querydsl-jpa", version.ref = "querydsl" }
+querydsl-apt = { module = "io.github.openfeign.querydsl:querydsl-apt", version.ref = "querydsl" }
+firebase-admin = { module = "com.google.firebase:firebase-admin", version.ref = "firebase-admin" }
+r2dbc-mysql = { module = "io.asyncer:r2dbc-mysql", version.ref = "r2dbc-mysql" }
+lombok = { module = "org.projectlombok:lombok" }
+mysql-connector = { module = "com.mysql:mysql-connector-j" }
+prometheus-registry = { module = "io.micrometer:micrometer-registry-prometheus" }
+jakarta-persistence = { module = "jakarta.persistence:jakarta.persistence-api" }
+jakarta-annotation = { module = "jakarta.annotation:jakarta.annotation-api" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version = "4.1.1" }

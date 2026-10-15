@@ -1,0 +1,52 @@
+plugins {
+    id 'java'
+    alias(libs.plugins.spring.boot)
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+dependencies {
+    implementation platform(org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES)
+    compileOnly platform(org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES)
+    annotationProcessor platform(org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES)
+    implementation project(':module-contract')
+
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springframework.boot:spring-boot-starter-restclient'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
+    implementation 'org.springframework.boot:spring-boot-starter-liquibase'
+    implementation 'org.springframework.boot:spring-boot-starter-jackson'
+
+    implementation libs.springdoc.webmvc
+    implementation libs.jjwt.api
+    runtimeOnly libs.jjwt.impl
+    runtimeOnly libs.jjwt.jackson
+    implementation libs.querydsl.jpa
+    implementation libs.prometheus.registry
+
+    runtimeOnly libs.mysql.connector
+    compileOnly libs.lombok
+    annotationProcessor libs.lombok
+    annotationProcessor "io.github.openfeign.querydsl:querydsl-apt:${libs.versions.querydsl.get()}:jpa"
+    annotationProcessor libs.jakarta.persistence
+    annotationProcessor libs.jakarta.annotation
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('bootJar') {
+    archiveFileName = 'catxi-api.jar'
+    mainClass = 'com.catxi.api.CatxiApiApplication'
+}
