@@ -1,0 +1,130 @@
+x-database-redis-environment: &database-redis-environment
+  TZ: Asia/Seoul
+  APP_ENVIRONMENT: ${APP_ENVIRONMENT:-production}
+  DB_HOST: ${DB_HOST:?Set DB_HOST}
+  DB_PORT: ${DB_PORT:-3306}
+  REDIS_HOST: ${REDIS_HOST:?Set REDIS_HOST}
+  REDIS_PORT: ${REDIS_PORT:-6379}
+  REDIS_SSL_ENABLED: ${REDIS_SSL_ENABLED:-false}
+
+x-default-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+
+services:
+  api:
+    image: ${API_IMAGE:?Set API_IMAGE to an immutable image tag}
+    restart: unless-stopped
+    stop_grace_period: 60s
+    logging: *default-logging
+    ports:
+      - "${APP_BIND_ADDRESS:-127.0.0.1}:${APP_BIND_PORT:-8080}:8080"
+      - "${MANAGEMENT_BIND_ADDRESS:-127.0.0.1}:${MANAGEMENT_PORT:-8081}:8081"
+    environment:
+      <<: *database-redis-environment
+      MANAGEMENT_SERVER_ADDRESS: 0.0.0.0
+      DB_USER: ${DB_USER:?Set DB_USER}
+      DB_PW: ${DB_PW:?Set DB_PW}
+      DB_SSL_MODE: ${DB_SSL_MODE:-VERIFY_IDENTITY}
+      REDIS_USER: ${REDIS_USER:-}
+      REDIS_PW: ${REDIS_PW:?Set REDIS_PW}
+      DB_POOL_MAX_SIZE: ${DB_POOL_MAX_SIZE:-10}
+      DB_POOL_MIN_IDLE: ${DB_POOL_MIN_IDLE:-2}
+      SPRING_PROFILES_ACTIVE: prod
+      CATXI_AUTH_MODE: ${CATXI_AUTH_MODE:-kakao}
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY}
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
+      KAKAO_REDIRECT_URI: ${KAKAO_REDIRECT_URI:-}
+      FCM_NOTIFICATIONS_ENABLED: ${FCM_NOTIFICATIONS_ENABLED:-true}
+      DISCORD_REPORTS_ENABLED: ${DISCORD_REPORTS_ENABLED:-false}
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?Set CORS_ALLOWED_ORIGINS}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - catxi-logs:/app/logs
+    networks:
+      - catxi-network
+    mem_limit: 768m
+    cpus: 1.0
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    security_opt:
+      - no-new-privileges:true
+
+  worker:
+    profiles:
+      - worker
+    image: ${WORKER_IMAGE:?Set WORKER_IMAGE to an immutable image tag}
+    restart: unless-stopped
+    stop_grace_period: 180s
+    logging: *default-logging
+    ports:
+      - "${WORKER_MANAGEMENT_BIND_ADDRESS:-127.0.0.1}:${WORKER_MANAGEMENT_PORT:-8082}:8081"
+    environment:
+      <<: *database-redis-environment
+      SPRING_PROFILES_ACTIVE: prod
+      WORKER_DB_USER: ${WORKER_DB_USER:?Set WORKER_DB_USER}
+      WORKER_DB_PW: ${WORKER_DB_PW:?Set WORKER_DB_PW}
+      WORKER_REDIS_USER: ${WORKER_REDIS_USER:-${REDIS_USER:-}}
+      WORKER_REDIS_PW: ${WORKER_REDIS_PW:-${REDIS_PW:?Set REDIS_PW}}
+      DB_SSL_MODE: ${DB_SSL_MODE:-VERIFY_IDENTITY}
+      R2DBC_POOL_MAX_SIZE: ${R2DBC_POOL_MAX_SIZE:-4}
+      FCM_NOTIFICATIONS_ENABLED: ${FCM_NOTIFICATIONS_ENABLED:-true}
+      FCM_FAILURE_RETENTION: ${FCM_FAILURE_RETENTION:-180d}
+      FCM_SERVICE_ACCOUNT_FILE: /run/catxi-secrets/fcm-service-account.json
+      FCM_OUTBOX_BATCH_SIZE: ${FCM_OUTBOX_BATCH_SIZE:-100}
+      FCM_STREAM_CONCURRENCY: ${FCM_STREAM_CONCURRENCY:-8}
+      FCM_STREAM_MAX_BACKLOG: ${FCM_STREAM_MAX_BACKLOG:-10000}
+      FCM_STREAM_CLAIM_MIN_IDLE_TIME: ${FCM_STREAM_CLAIM_MIN_IDLE_TIME:-5m}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - catxi-worker-logs:/app/logs
+      - "${FCM_SERVICE_ACCOUNT_HOST_DIRECTORY:-/etc/catxi/secrets}:/run/catxi-secrets:ro,z"
+    networks:
+      - catxi-network
+    mem_limit: 768m
+    cpus: 1.0
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    security_opt:
+      - no-new-privileges:true
+
+  alloy:
+    profiles:
+      - log-shipping
+    image: docker.io/grafana/alloy:v1.20.1
+    restart: unless-stopped
+    command:
+      - run
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    environment:
+      APP_ENVIRONMENT: ${APP_ENVIRONMENT:-production}
+      APP_INSTANCE: ${APP_INSTANCE:-catxi-app}
+      LOKI_WRITE_URL: ${LOKI_WRITE_URL:-}
+      LOKI_WRITE_USERNAME: ${LOKI_WRITE_USERNAME:-}
+      LOKI_WRITE_PASSWORD: ${LOKI_WRITE_PASSWORD:-}
+    volumes:
+      - ./monitoring/alloy/app.alloy:/etc/alloy/config.alloy:ro,Z
+      - catxi-logs:/app/logs:ro,z
+      - catxi-worker-logs:/app/worker-logs:ro,z
+      - alloy_app_data:/var/lib/alloy/data
+    networks:
+      - catxi-network
+    mem_limit: 128m
+    cpus: 0.25
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  catxi-logs:
+  catxi-worker-logs:
+  alloy_app_data:
+
+networks:
+  catxi-network:
+    driver: bridge
