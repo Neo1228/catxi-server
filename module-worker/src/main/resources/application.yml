@@ -1,0 +1,106 @@
+spring:
+  application:
+    name: catxi-worker
+  main:
+    web-application-type: reactive
+    keep-alive: true
+  lifecycle:
+    timeout-per-shutdown-phase: 160s
+  r2dbc:
+    url: "r2dbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/catxi?serverZoneId=Asia/Seoul&\
+      sslMode=${DB_SSL_MODE:VERIFY_IDENTITY}"
+    username: ${WORKER_DB_USER}
+    password: ${WORKER_DB_PW}
+    pool:
+      initial-size: 2
+      max-size: ${R2DBC_POOL_MAX_SIZE:4}
+      max-idle-time: 30m
+      validation-query: SELECT 1
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      username: ${WORKER_REDIS_USER:}
+      password: ${WORKER_REDIS_PW:}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
+      connect-timeout: 2s
+      timeout: 3s
+  jackson:
+    time-zone: Asia/Seoul
+
+server:
+  port: 8080
+  shutdown: graceful
+
+management:
+  server:
+    port: 8081
+    address: 0.0.0.0
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      group:
+        readiness:
+          include: readinessState,r2dbc,redis
+        liveness:
+          include: livenessState
+  metrics:
+    tags:
+      service: catxi-worker
+      environment: ${APP_ENVIRONMENT:local}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+fcm:
+  failure-retention: ${FCM_FAILURE_RETENTION:180d}
+  worker:
+    enabled: ${FCM_NOTIFICATIONS_ENABLED:false}
+  service-account-file: ${FCM_SERVICE_ACCOUNT_FILE:}
+  outbox:
+    batch-size: ${FCM_OUTBOX_BATCH_SIZE:100}
+    sent-retention: 30d
+    cleanup-batch-size: 1000
+    poll-interval: 1s
+    publish-concurrency: 8
+    lease-duration: 2m
+    max-retries: 10
+    retry-base-delay: 2s
+    retry-max-delay: 5m
+  stream:
+    name: fcm:stream
+    group: fcm-consumers
+    idempotency-ttl: 7d
+    max-backlog: ${FCM_STREAM_MAX_BACKLOG:10000}
+    poll-timeout: 1s
+    batch-size: 32
+    concurrency: ${FCM_STREAM_CONCURRENCY:8}
+    claim-min-idle-time: ${FCM_STREAM_CLAIM_MIN_IDLE_TIME:5m}
+    reclaim-interval: 30s
+    reclaim-page-size: 500
+    processing-timeout: 2m
+    retry-base-delay: 1s
+    retry-max-delay: 30s
+    max-retries: 3
+
+logging:
+  level:
+    com.catxi.worker: INFO
+    root: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] %logger{36} - %msg%n"
+  file:
+    name: /app/logs/catxi-worker-${HOSTNAME:local}.log
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 7
+      total-size-cap: 300MB
