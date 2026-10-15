@@ -1,4 +1,3 @@
-HELP.md
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
@@ -37,19 +36,32 @@ out/
 .vscode/
 
 
-### application.properties ###
-src/main/resources/application-local.yml
-src/main/resources/application-dev.yml
-src/main/resources/application.yml
+### Local application configuration ###
+**/src/main/resources/application-local.yml
+
+### 실행 호스트 전용 환경 변수와 비밀값 ###
+.env
+.env.*
+secrets/
+# Prometheus 대상 파일에는 배포 호스트의 사설 주소가 들어갑니다.
+/monitoring/prometheus/targets/*.example.yml
+/monitoring/prometheus/targets/backend.yml
+/monitoring/prometheus/targets/worker.yml
+
+### macOS metadata ###
+.DS_Store
 
 ### QueryDSL ###
-/src/main/generated/
+**/src/main/generated/
+**/build/generated/
 
 ### logs ###
 /logs/
+*.log
 
 ### Firebase service account key ###
-/src/main/resources/firebase-service-account-key.json
+**/firebase-service-account-key.json
+**/*service-account*.json
 
 ### Claude Code ###
 CLAUDE.md
