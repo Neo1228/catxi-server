@@ -1,385 +1,172 @@
 groups:
-- name: catxi.backend
-  rules:
-  - alert: 메모리사용량높음
-    expr: (jvm_memory_used_bytes{job="catxi-backend-instances",area="heap"} / jvm_memory_max_bytes{job="catxi-backend-instances",area="heap"}) * 100 > 75
-    for: 3m
-    labels:
-      severity: warning
-      team: 백엔드
-      service: catxi-api
-      priority: P2
-      impact: 성능저하
-    annotations:
-      summary: "🧠 메모리 사용량 높음 - {{ $labels.instance }}"
-      description: |
-        **백엔드 서비스 메모리 경고**
-        현재 사용률: {{ $value }}%
-        서버: {{ $labels.instance }}
+  - name: catxi-api
+    rules:
+      - alert: CatxiApiDown
+        expr: up{job="catxi-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: catxi-api
+        annotations:
+          summary: "Catxi API 연결 실패: {{ $labels.instance }}"
+          description: "API 메트릭 수집이 1분 이상 실패했습니다. 앱 상태와 관리 포트 방화벽을 확인하세요."
 
-        **🔧 확인사항:**
-        • 메모리 누수 확인
-        • GC 활동 모니터링
-        • 지속되면 스케일링 검토
+      - alert: CatxiApiHighErrorRate
+        expr: >-
+          sum by (instance) (rate(http_server_requests_seconds_count{
+            job="catxi-backend",status=~"5.."}[5m]))
+          /
+          sum by (instance) (rate(http_server_requests_seconds_count{
+            job="catxi-backend"}[5m])) > 0.05
+        for: 3m
+        labels:
+          severity: warning
+          service: catxi-api
+        annotations:
+          summary: "Catxi API 5xx 비율이 높습니다: {{ $labels.instance }}"
+          description: "최근 5분간 5xx 비율이 {{ $value | humanizePercentage }}입니다. 애플리케이션과 의존 서비스 로그를 확인하세요."
 
-  - alert: 메모리사용량위험
-    expr: (jvm_memory_used_bytes{job="catxi-backend-instances",area="heap"} / jvm_memory_max_bytes{job="catxi-backend-instances",area="heap"}) * 100 > 85
-    for: 1m
-    labels:
-      severity: critical
-      team: 백엔드
-      service: catxi-api
-      priority: P0
-      impact: 서비스중단위험
-    annotations:
-      summary: "🚨 위험: 메모리 거의 소진 - {{ $labels.instance }}"
-      description: |
-        **즉시 조치 필요**
-        사용률: {{ $value }}%
-        위험: 몇 분 내 서비스 다운 가능
+      - alert: CatxiApiSlowResponses
+        expr: >-
+          histogram_quantile(0.95, sum by (le, instance) (
+            rate(http_server_requests_seconds_bucket{job="catxi-backend"}[5m]))) > 1.5
+        for: 3m
+        labels:
+          severity: warning
+          service: catxi-api
+        annotations:
+          summary: "Catxi API 응답 지연: {{ $labels.instance }}"
+          description: "최근 5분간 95백분위 응답 시간이 {{ $value }}초입니다."
 
-        **⚡ 긴급 조치:**
-        1. 즉시 메모리 누수 확인
-        2. 필요시 서비스 재시작
-        3. 로드밸런서 트래픽 분산
-        4. 다른 인스턴스 모니터링
+      - alert: CatxiApiHeapUsageHigh
+        expr: >-
+          sum by (instance) (jvm_memory_used_bytes{job="catxi-backend",area="heap"})
+          /
+          sum by (instance) (jvm_memory_max_bytes{job="catxi-backend",area="heap"}) > 0.85
+        for: 3m
+        labels:
+          severity: warning
+          service: catxi-api
+        annotations:
+          summary: "Catxi API 힙 사용량이 높습니다: {{ $labels.instance }}"
+          description: "힙 사용률이 {{ $value | humanizePercentage }}입니다."
 
-  - alert: 응답속도느림
-    expr: histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{job="catxi-backend-instances"}[5m])) > 1.5
-    for: 2m
-    labels:
-      severity: warning
-      team: 백엔드
-      service: catxi-api
-      priority: P2
-      impact: 사용자경험저하
-    annotations:
-      summary: "⏱️ API 응답 속도 느림 - {{ $labels.instance }}"
-      description: |
-        **성능 저하 감지**
-        95% 응답시간: {{ $value }}초
-        목표: 1.5초 이하
+      - alert: CatxiDatabasePoolUsageHigh
+        expr: >-
+          hikaricp_connections_active{job="catxi-backend"}
+          /
+          hikaricp_connections_max{job="catxi-backend"} > 0.8
+        for: 3m
+        labels:
+          severity: warning
+          service: catxi-api
+        annotations:
+          summary: "데이터베이스 연결 풀이 포화에 가깝습니다: {{ $labels.instance }}"
+          description: "활성 연결 비율이 {{ $value | humanizePercentage }}입니다. 장기 트랜잭션과 쿼리 지연을 확인하세요."
 
-        **🔍 확인사항:**
-        • DB 쿼리 성능 확인
-        • 에러 로그 검토
-        • CPU/IO 사용률 확인
-        • 외부 서비스 연결 확인
+  - name: catxi-worker
+    rules:
+      - alert: CatxiNotificationWorkerDown
+        expr: up{job="catxi-worker"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: catxi-worker
+        annotations:
+          summary: "워커 연결 실패: {{ $labels.instance }}"
+          description: "워커 메트릭 수집이 1분 이상 실패했습니다. FCM 아웃박스 적체 여부도 확인하세요."
 
-  - alert: 응답속도매우느림
-    expr: histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{job="catxi-backend-instances"}[5m])) > 3.0
-    for: 1m
-    labels:
-      severity: critical
-      team: 백엔드
-      service: catxi-api
-      priority: P1
-      impact: 심각한사용자경험저하
-    annotations:
-      summary: "🚨 위험: 극도로 느린 응답속도 - {{ $labels.instance }}"
-      description: |
-        **심각한 성능 문제**
-        95% 응답시간: {{ $value }}초
-        사용자 경험: 심각하게 저하됨
+      - alert: CatxiFcmOutboxBacklog
+        expr: catxi_fcm_outbox_pending_sampled{job="catxi-worker"} > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: catxi-worker
+        annotations:
+          summary: "FCM 아웃박스 대기 건수가 많습니다: {{ $labels.instance }}"
+          description: "대기 행이 1,000건을 5분 이상 초과했습니다. 10,001은 그 이상을 뜻합니다."
 
-        **⚡ 즉시 조치:**
-        1. 극심한 부하 상태 확인
-        2. 블로킹 작업 조사
-        3. 긴급 트래픽 우회 검토
-        4. 시니어 개발자 에스컬레이션
+      - alert: CatxiFcmRedisStreamBacklog
+        expr: >-
+          catxi_fcm_stream_size{job="catxi-worker"}
+          /
+          catxi_fcm_stream_max_backlog{job="catxi-worker"} > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          service: catxi-worker
+        annotations:
+          summary: "FCM Redis Stream 적체가 상한을 넘었습니다: {{ $labels.instance }}"
+          description: "설정된 Redis Stream 상한의 90%를 넘었습니다. DB 아웃박스 발행을 일시 중지하며 Redis 소비 상태와 Firebase 오류를 확인하세요. 미처리 메시지는 길이 제한으로 삭제하지 않습니다."
 
-- name: catxi.backend.availability
-  rules:
-  - alert: 서버다운
-    expr: up{job="catxi-backend-instances"} == 0
-    for: 30s
-    labels:
-      severity: critical
-      team: 백엔드
-      service: catxi-api
-      priority: P0
-      impact: 서비스중단
-    annotations:
-      summary: "🚨 백엔드 서버 다운 - {{ $labels.instance }}"
-      description: |
-        **서비스 중단**
-        서버: {{ $labels.instance }}
-        지속시간: 30초 이상
+      - alert: CatxiFcmFirstDueEventDelay
+        expr: catxi_fcm_outbox_first_due_event_age_seconds{job="catxi-worker"} > 300
+        for: 5m
+        labels:
+          severity: warning
+          service: catxi-worker
+        annotations:
+          summary: "FCM 아웃박스 처리 지연: {{ $labels.instance }}"
+          description: "가장 먼저 처리 가능한 이벤트의 생성 후 경과 시간이 5분을 넘었습니다."
 
-        **⚡ 긴급 대응:**
-        1. AWS 콘솔에서 인스턴스 상태 확인
-        2. Docker 컨테이너 상태 확인
-        3. 애플리케이션 로그 확인
-        4. 로드밸런서 트래픽 리다이렉션 확인
-        5. 필요시 새 인스턴스 실행
+      - alert: CatxiFcmDeadLetterGrowth
+        expr: catxi_fcm_dead_letter_failures_15m{job="catxi-worker"} > 0
+        for: 1m
+        labels:
+          severity: warning
+          service: catxi-worker
+        annotations:
+          summary: "최근 FCM 알림이 DLQ에 적재됐습니다: {{ $labels.instance }}"
+          description: "최근 15분 실패 기록을 확인하고 재처리 또는 장기 보존 정책을 점검하세요."
 
-  - alert: 에러율높음
-    expr: (rate(http_server_requests_seconds_count{job="catxi-backend-instances",status=~"5.."}[5m]) / rate(http_server_requests_seconds_count{job="catxi-backend-instances"}[5m])) * 100 > 5
-    for: 2m
-    labels:
-      severity: warning
-      team: 백엔드
-      service: catxi-api
-      priority: P1
-      impact: 사용자영향
-    annotations:
-      summary: "⚠️ 5xx 에러율 높음 - {{ $labels.instance }}"
-      description: |
-        **서버 에러 증가 감지**
-        에러율: {{ $value }}%
-        서버: {{ $labels.instance }}
+      - alert: CatxiWorkerMetricsStale
+        expr: time() - catxi_worker_metrics_last_success_epoch_seconds{job="catxi-worker"} > 120
+        for: 1m
+        labels:
+          severity: warning
+          service: catxi-worker
+        annotations:
+          summary: "워커의 DB 운영 지표 갱신이 중단됐습니다: {{ $labels.instance }}"
+          description: "DB 연결과 워커 로그를 확인하세요."
 
-        **🔍 확인사항:**
-        • 애플리케이션 로그에서 예외 확인
-        • 데이터베이스 연결 확인
-        • 리소스 사용률 모니터링
-        • 최근 배포 내역 확인
+  - name: catxi-infrastructure
+    rules:
+      - alert: CatxiRedisExporterDown
+        expr: up{job="redis-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: redis
+        annotations:
+          summary: "Redis 메트릭 수집 실패"
+          description: "Redis exporter 상태와 Redis 연결 설정을 확인하세요."
 
-  - alert: 에러율위험
-    expr: (rate(http_server_requests_seconds_count{job="catxi-backend-instances",status=~"5.."}[5m]) / rate(http_server_requests_seconds_count{job="catxi-backend-instances"}[5m])) * 100 > 15
-    for: 1m
-    labels:
-      severity: critical
-      team: 백엔드
-      service: catxi-api
-      priority: P0
-      impact: 심각한서비스장애
-    annotations:
-      summary: "🚨 위험: 심각한 에러율 - {{ $labels.instance }}"
-      description: |
-        **심각한 서비스 장애**
-        에러율: {{ $value }}%
-        사용자 영향: 높은 실패율
+      - alert: CatxiNodeDiskSpaceLow
+        expr: >-
+          node_filesystem_avail_bytes{job="node-exporter",fstype!~"tmpfs|overlay|squashfs",
+            mountpoint!~"/(sys|proc|dev|run).*"}
+          /
+          node_filesystem_size_bytes{job="node-exporter",fstype!~"tmpfs|overlay|squashfs",
+            mountpoint!~"/(sys|proc|dev|run).*"} < 0.15
+        for: 5m
+        labels:
+          severity: critical
+          service: infrastructure
+        annotations:
+          summary: "호스트 디스크 여유 공간 부족: {{ $labels.instance }} {{ $labels.mountpoint }}"
+          description: "사용 가능한 공간이 {{ $value | humanizePercentage }} 미만입니다. Loki와 컨테이너 로그 용량을 확인하세요."
 
-        **⚡ 긴급 조치:**
-        1. 즉시 애플리케이션 로그 확인
-        2. 최근 배포 롤백 검토
-        3. 가능하면 트래픽 우회
-        4. 담당 엔지니어 에스컬레이션
-
-- name: catxi.backend.resources
-  rules:
-  - alert: DB커넥션풀높음
-    expr: (hikaricp_connections_active{job="catxi-backend-instances"} / hikaricp_connections_max{job="catxi-backend-instances"}) > 0.7
-    for: 3m
-    labels:
-      severity: warning
-      team: 백엔드
-      service: catxi-api
-      priority: P2
-      impact: 성능저하
-    annotations:
-      summary: "🔗 DB 커넥션 풀 사용률 높음 - {{ $labels.instance }}"
-      description: |
-        **데이터베이스 커넥션 풀 경고**
-        사용률: {{ $value }}%
-        최대: {{ .Labels.hikaricp_connections_max }}
-
-        **🔍 확인사항:**
-        • 장시간 실행 트랜잭션 확인
-        • 커넥션 누수 확인
-        • DB 쿼리 성능 확인
-        • 커넥션 풀 설정 튜닝
-
-  - alert: 요청량적음
-    expr: rate(http_server_requests_seconds_count{job="catxi-backend-instances"}[10m]) < 0.01
-    for: 5m
-    labels:
-      severity: info
-      team: 백엔드
-      service: catxi-api
-      priority: P3
-      impact: 모니터링정보
-    annotations:
-      summary: "📊 요청량 적음 - {{ $labels.instance }}"
-      description: |
-        **모니터링 안내**
-        요청율: {{ $value }} req/sec
-        가능한 원인:
-        • 정상적인 저트래픽 시간대
-        • 로드밸런서 라우팅 문제
-        • 클라이언트 연결 문제
-
-        **참고:** 대학생 서비스 특성상 수업시간 외에는 정상
-
-  - alert: GC시간높음
-    expr: rate(jvm_gc_collection_seconds_sum{job="catxi-backend-instances"}[5m]) > 0.1
-    for: 2m
-    labels:
-      severity: warning
-      team: 백엔드
-      service: catxi-api
-      priority: P2
-      impact: 성능저하
-    annotations:
-      summary: "🗑️ GC 시간 길어짐 - {{ $labels.instance }}"
-      description: |
-        **가비지 컨렉션 성능 문제**
-        GC 시간: {{ $value }}초/초
-        응답 지연을 일으킬 수 있음
-
-        **🔧 조치사항:**
-        • 메모리 할당 패턴 검토
-        • 메모리 누수 확인
-        • GC 트닝 파라미터 검토
-        • 힙 사용률 추세 모니터링
-
-- name: catxi.infrastructure.system
-  rules:
-  - alert: 시스템CPU높음
-    expr: 100 - (avg(rate(node_cpu_seconds_total{job="node-exporter",mode="idle"}[5m])) * 100) > 70
-    for: 3m
-    labels:
-      severity: warning
-      team: 인프라
-      service: 모니터링
-      priority: P2
-      impact: 성능저하
-    annotations:
-      summary: "🖥️ CPU 사용률 높음 - 모니터링 서버"
-      description: |
-        **인프라 리소스 경고**
-        CPU 사용률: {{ $value }}%
-        서버: 모니터링 서버
-
-        **🔍 확인사항:**
-        • 실행 중인 프로세스 확인
-        • 컨테이너 리소스 사용률 검토
-        • 비정상 활동 모니터링
-        • 리소스 스케일링 검토
-
-  - alert: 시스템CPU위험
-    expr: 100 - (avg(rate(node_cpu_seconds_total{job="node-exporter",mode="idle"}[5m])) * 100) > 85
-    for: 1m
-    labels:
-      severity: critical
-      team: 인프라
-      service: 모니터링
-      priority: P1
-      impact: 시스템불안정
-    annotations:
-      summary: "🚨 위험: CPU 고갈 - 모니터링 서버"
-      description: |
-        **중요 리소스 문제**
-        CPU 사용률: {{ $value }}%
-        위험: 시스템 불안정
-
-        **⚡ 긴급 조치:**
-        1. 리소스 집약적 프로세스 식별
-        2. 필수 아닌 서비스 중단 검토
-        3. 시스템 스케일링 또는 마이그레이션 계획
-        4. 시스템 충돌 모니터링
-
-  - alert: 시스템메모리높음
-    expr: (node_memory_MemTotal_bytes{job="node-exporter"} - node_memory_MemAvailable_bytes{job="node-exporter"}) / node_memory_MemTotal_bytes{job="node-exporter"} * 100 > 80
-    for: 2m
-    labels:
-      severity: warning
-      team: 인프라
-      service: 모니터링
-      priority: P2
-      impact: 성능저하
-    annotations:
-      summary: "💾 메모리 사용률 높음 - 모니터링 서버"
-      description: |
-        **시스템 메모리 경고**
-        메모리 사용률: {{ $value }}%
-        사용가능 메모리 확인 필요
-
-        **🔍 확인사항:**
-        • 컨테이너 메모리 사용률
-        • 애플리케이션 메모리 누수
-        • 불필요한 서비스 실행 중
-        • 메모리 최적화 검토
-
-- name: catxi.infrastructure.dependencies
-  rules:
-  - alert: Redis서버다운
-    expr: up{job="redis-exporter"} == 0
-    for: 1m
-    labels:
-      severity: critical
-      team: 인프라
-      service: redis
-      priority: P0
-      impact: 서비스중단위험
-    annotations:
-      summary: "🚨 Redis 서버 다운"
-      description: |
-        **중요 의존성 서비스 장애**
-        서비스: Redis 캠시
-        영향: 백엔드 기능 심각한 영향
-
-        **⚡ 긴급 대응:**
-        1. Redis 컨테이너/서비스 상태 확인
-        2. 네트워크 연결성 확인
-        3. Redis 로그 에러 검토
-        4. 필요시 Redis 서비스 재시작
-        5. 백엔드 에러율 모니터링
-
-  - alert: Redis메모리높음
-    expr: redis_memory_used_bytes{job="redis-exporter"} / redis_memory_max_bytes{job="redis-exporter"} * 100 > 80
-    for: 2m
-    labels:
-      severity: warning
-      team: 인프라
-      service: redis
-      priority: P2
-      impact: 성능저하
-    annotations:
-      summary: "📊 Redis 메모리 사용률 높음"
-      description: |
-        **Redis 메모리 경고**
-        사용률: {{ $value }}%
-
-        **🔍 조치사항:**
-        • 키 만료 정책 검토
-        • 대용량 키 확인
-        • 메모리 최적화 검토
-        • 제거 통계 모니터링
-
-- name: catxi.infrastructure.monitoring
-  rules:
-  - alert: Prometheus다운
-    expr: up{job="prometheus"} == 0
-    for: 30s
-    labels:
-      severity: critical
-      team: 인프라
-      service: prometheus
-      priority: P1
-      impact: 모니터링중단
-    annotations:
-      summary: "🚨 Prometheus 모니터링 중단"
-      description: |
-        **모니터링 시스템 장애**
-        위험: 시스템 상태 모니터링 불가
-
-        **⚡ 즉시 조치:**
-        1. Prometheus 컨테이너 상태 확인
-        2. 설정 파일 확인
-        3. 시스템 리소스 검토
-        4. 모니터링 기능 즐시 복구
-        5. 백업 모니터링 시스템 확인
-
-  - alert: AlertManager다운
-    expr: up{job="alertmanager"} == 0
-    for: 1m
-    labels:
-      severity: critical
-      team: 인프라
-      service: alertmanager
-      priority: P1
-      impact: 알림중단
-    annotations:
-      summary: "🚨 AlertManager 다운 - 알림 중단!"
-      description: |
-        **알림 시스템 장애**
-        위험: 알림이 전송되지 않음
-
-        **⚡ 긴급 대응:**
-        1. 즉시 AlertManager 상태 확인
-        2. Discord 웹훅 연결성 확인
-        3. 알림 시스템 복구
-        4. 알림 전송 테스트
-        5. 수리 완료시까지 대체 채널로 모니터링
+      - alert: CatxiNodeInodesLow
+        expr: >-
+          node_filesystem_files_free{job="node-exporter",fstype!~"tmpfs|overlay|squashfs",
+            mountpoint!~"/(sys|proc|dev|run).*"}
+          /
+          node_filesystem_files{job="node-exporter",fstype!~"tmpfs|overlay|squashfs",
+            mountpoint!~"/(sys|proc|dev|run).*"} < 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: infrastructure
+        annotations:
+          summary: "호스트 inode 여유 부족: {{ $labels.instance }} {{ $labels.mountpoint }}"
+          description: "inode 여유가 10% 미만입니다. 파일 수가 많은 로그와 임시 파일을 확인하세요."
