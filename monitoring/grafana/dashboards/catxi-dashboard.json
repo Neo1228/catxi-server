@@ -106,7 +106,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(http_server_requests_seconds_count{job=\"catxi-backend-instances\"}[5m])",
+          "expr": "rate(http_server_requests_seconds_count{job=\"catxi-backend\"}[5m])",
           "interval": "",
           "legendFormat": "{{instance}} - HTTP Requests/sec",
           "range": true,
@@ -294,7 +294,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_used_bytes{job=\"catxi-backend-instances\",area=\"heap\"}",
+          "expr": "jvm_memory_used_bytes{job=\"catxi-backend\",area=\"heap\"}",
           "interval": "",
           "legendFormat": "{{instance}} - Heap Used",
           "range": true,
@@ -306,7 +306,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_max_bytes{job=\"catxi-backend-instances\",area=\"heap\"}",
+          "expr": "jvm_memory_max_bytes{job=\"catxi-backend\",area=\"heap\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "{{instance}} - Heap Max",
@@ -401,7 +401,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "hikaricp_connections_active{job=\"catxi-backend-instances\"}",
+          "expr": "hikaricp_connections_active{job=\"catxi-backend\"}",
           "interval": "",
           "legendFormat": "{{instance}} - Active Connections",
           "range": true,
@@ -413,7 +413,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "hikaricp_connections_idle{job=\"catxi-backend-instances\"}",
+          "expr": "hikaricp_connections_idle{job=\"catxi-backend\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "{{instance}} - Idle Connections",
@@ -426,7 +426,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "hikaricp_connections_max{job=\"catxi-backend-instances\"}",
+          "expr": "hikaricp_connections_max{job=\"catxi-backend\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "{{instance}} - Max Connections",
@@ -521,7 +521,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(http_server_requests_seconds_sum{job=\"catxi-backend-instances\"}[5m]) / rate(http_server_requests_seconds_count{job=\"catxi-backend-instances\"}[5m])",
+          "expr": "rate(http_server_requests_seconds_sum{job=\"catxi-backend\"}[5m]) / rate(http_server_requests_seconds_count{job=\"catxi-backend\"}[5m])",
           "interval": "",
           "legendFormat": "{{instance}} - Avg Response Time",
           "range": true,
