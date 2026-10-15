@@ -1,0 +1,45 @@
+loki.write "default" {
+  endpoint {
+    url = sys.env("LOKI_WRITE_URL")
+    max_backoff_retries = 0
+    min_backoff_period = "1s"
+    max_backoff_period = "1m"
+
+    basic_auth {
+      username = sys.env("LOKI_WRITE_USERNAME")
+      password = sys.env("LOKI_WRITE_PASSWORD")
+    }
+  }
+}
+
+local.file_match "api_logs" {
+  path_targets = [{
+    "__path__"    = "/app/logs/*.log*",
+    "job"         = "catxi-backend",
+    "service"     = "catxi-api",
+    "environment" = sys.env("APP_ENVIRONMENT"),
+    "instance"    = sys.env("APP_INSTANCE"),
+  }]
+  sync_period = "10s"
+}
+
+loki.source.file "api_logs" {
+  targets    = local.file_match.api_logs.targets
+  forward_to = [loki.write.default.receiver]
+}
+
+local.file_match "worker_logs" {
+  path_targets = [{
+    "__path__"    = "/app/worker-logs/*.log*",
+    "job"         = "catxi-backend",
+    "service"     = "catxi-worker",
+    "environment" = sys.env("APP_ENVIRONMENT"),
+    "instance"    = sys.env("APP_INSTANCE"),
+  }]
+  sync_period = "10s"
+}
+
+loki.source.file "worker_logs" {
+  targets    = local.file_match.worker_logs.targets
+  forward_to = [loki.write.default.receiver]
+}
