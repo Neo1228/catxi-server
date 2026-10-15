@@ -1,9 +1,6 @@
-package com.project.catxi.chat.domain;
+package com.catxi.chat.domain;
 
-import java.time.LocalDateTime;
-
-import com.project.catxi.member.domain.Member;
-
+import com.catxi.member.domain.Member;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -23,16 +20,15 @@ import lombok.NoArgsConstructor;
 @Builder
 public class KickedParticipant {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "chat_room_id", nullable = false)
-	private ChatRoom chatRoom;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "chat_room_id", nullable = false)
+  private ChatRoom chatRoom;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "member_id", nullable = false)
-	private Member member;
-
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "member_id", nullable = false)
+  private Member member;
 }
