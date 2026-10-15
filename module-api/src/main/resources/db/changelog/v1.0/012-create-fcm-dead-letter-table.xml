@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="012" author="catxi-team">
+        <comment>Persist failed FCM messages before acknowledging their Redis Stream records</comment>
+        <createTable tableName="fcm_dead_letter">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="source_message_id" type="VARCHAR(64)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="event_id" type="VARCHAR(36)"/>
+            <column name="payload" type="LONGTEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="error_message" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="retry_count" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="failed_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex indexName="idx_fcm_dead_letter_event_id" tableName="fcm_dead_letter">
+            <column name="event_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="fcm_dead_letter"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="014-01-add-ready-timeout-at" author="catxi-team">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <and>
+                <tableExists tableName="chat_room"/>
+                <not>
+                    <columnExists tableName="chat_room" columnName="ready_timeout_at"/>
+                </not>
+            </and>
+        </preConditions>
+        <addColumn tableName="chat_room">
+            <column name="ready_timeout_at" type="DATETIME"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="014-02-recover-existing-ready-rooms" author="catxi-team">
+        <preConditions onFail="HALT" onError="HALT">
+            <tableExists tableName="chat_room"/>
+            <columnExists tableName="chat_room" columnName="status"/>
+            <columnExists tableName="chat_room" columnName="ready_timeout_at"/>
+        </preConditions>
+        <comment>이미 준비 상태에 고정된 방은 배포 후 복구 작업이 즉시 회수하도록 만료시각을 지정합니다.</comment>
+        <sql>UPDATE chat_room SET ready_timeout_at = CURRENT_TIMESTAMP WHERE status = 'READY_LOCKED' AND ready_timeout_at IS NULL</sql>
+    </changeSet>
+
+    <changeSet id="014-03-create-ready-timeout-index" author="catxi-team">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <and>
+                <tableExists tableName="chat_room"/>
+                <columnExists tableName="chat_room" columnName="ready_timeout_at"/>
+                <not>
+                    <indexExists tableName="chat_room" indexName="idx_chat_room_ready_timeout"/>
+                </not>
+            </and>
+        </preConditions>
+        <createIndex tableName="chat_room" indexName="idx_chat_room_ready_timeout">
+            <column name="status"/>
+            <column name="ready_timeout_at"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="014-04-verify-ready-timeout-index" author="catxi-team">
+        <preConditions onFail="HALT" onError="HALT">
+            <and>
+                <tableExists tableName="chat_room"/>
+                <sqlCheck expectedResult="1">
+                    SELECT CASE
+                        WHEN COUNT(*) = 2
+                         AND SUM(CASE WHEN seq_in_index = 1 AND column_name = 'status' THEN 1 ELSE 0 END) = 1
+                         AND SUM(CASE WHEN seq_in_index = 2 AND column_name = 'ready_timeout_at' THEN 1 ELSE 0 END) = 1
+                        THEN 1 ELSE 0 END
+                    FROM information_schema.statistics
+                    WHERE table_schema = DATABASE()
+                      AND table_name = 'chat_room'
+                      AND index_name = 'idx_chat_room_ready_timeout'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <sql>SELECT 1</sql>
+    </changeSet>
+</databaseChangeLog>

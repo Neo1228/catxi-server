@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="027-persist-ready-participant-count" author="catxi-team">
+        <addColumn tableName="chat_room">
+            <column name="ready_participant_count" type="BIGINT"
+                    remarks="준비 요청 시점의 참가자 수. 타임아웃 복구 때 매칭 검증에 사용한다."/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="chat_room" columnName="ready_participant_count"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="015-01-index-sent-outbox-retention" author="catxi-team">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <and>
+                <tableExists tableName="fcm_outbox"/>
+                <columnExists tableName="fcm_outbox" columnName="sent_at"/>
+                <not>
+                    <indexExists tableName="fcm_outbox" indexName="idx_fcm_outbox_status_sent_at"/>
+                </not>
+            </and>
+        </preConditions>
+        <createIndex tableName="fcm_outbox" indexName="idx_fcm_outbox_status_sent_at">
+            <column name="status"/>
+            <column name="sent_at"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="015-02-verify-sent-outbox-retention-index" author="catxi-team">
+        <preConditions onFail="HALT" onError="HALT">
+            <sqlCheck expectedResult="1">
+                SELECT CASE
+                    WHEN COUNT(*) = 2
+                     AND SUM(CASE WHEN seq_in_index = 1 AND column_name = 'status' THEN 1 ELSE 0 END) = 1
+                     AND SUM(CASE WHEN seq_in_index = 2 AND column_name = 'sent_at' THEN 1 ELSE 0 END) = 1
+                    THEN 1 ELSE 0 END
+                FROM information_schema.statistics
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'fcm_outbox'
+                  AND index_name = 'idx_fcm_outbox_status_sent_at'
+            </sqlCheck>
+        </preConditions>
+        <sql>SELECT 1</sql>
+    </changeSet>
+</databaseChangeLog>

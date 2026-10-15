@@ -12,7 +12,7 @@
         </preConditions>
 
         <comment>Create member table</comment>
-        
+
         <createTable tableName="member">
             <column name="id" type="BIGINT" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
@@ -48,15 +48,15 @@
             <column name="created_time" type="DATETIME"/>
             <column name="updated_time" type="DATETIME"/>
         </createTable>
-        
+
         <createIndex tableName="member" indexName="idx_member_email">
             <column name="email"/>
         </createIndex>
-        
+
         <createIndex tableName="member" indexName="idx_member_student_no">
             <column name="student_no"/>
         </createIndex>
-        
+
     </changeSet>
 
 </databaseChangeLog>

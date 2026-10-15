@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="025-unique-member-nickname" author="catxi-team">
+        <preConditions onFail="HALT">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                FROM (
+                    SELECT nickname
+                    FROM member
+                    WHERE nickname IS NOT NULL
+                    GROUP BY nickname
+                    HAVING COUNT(*) &gt; 1
+                ) duplicate_nicknames
+            </sqlCheck>
+        </preConditions>
+        <comment>닉네임 중복 확인과 동시 가입 경쟁을 데이터베이스에서도 차단한다</comment>
+        <addUniqueConstraint tableName="member"
+                             columnNames="nickname"
+                             constraintName="uk_member_nickname"/>
+        <rollback>
+            <dropUniqueConstraint tableName="member" constraintName="uk_member_nickname"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

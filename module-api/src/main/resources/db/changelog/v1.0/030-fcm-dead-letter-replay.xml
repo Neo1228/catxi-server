@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="030-fcm-dead-letter-replay" author="catxi-team">
+        <preConditions onFail="HALT"
+                       onError="HALT"
+                       onFailMessage="fcm_dead_letter가 없거나 재처리 기록 컬럼이 이미 있습니다. 스키마를 확인하세요.">
+            <and>
+                <tableExists tableName="fcm_dead_letter"/>
+                <not>
+                    <columnExists tableName="fcm_dead_letter" columnName="replay_event_id"/>
+                </not>
+                <not>
+                    <columnExists tableName="fcm_dead_letter" columnName="replay_requested_at"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>DLQ 원본을 보존하며 한 번의 원자적 재처리 요청을 추적합니다.</comment>
+        <addColumn tableName="fcm_dead_letter">
+            <column name="replay_event_id" type="VARCHAR(36)"/>
+            <column name="replay_requested_at" type="TIMESTAMP(6)"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="fcm_dead_letter" columnName="replay_requested_at"/>
+            <dropColumn tableName="fcm_dead_letter" columnName="replay_event_id"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

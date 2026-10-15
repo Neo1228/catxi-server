@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="017-redact-chat-notification-content" author="catxi">
+        <comment>Keep chat text in chat history and replace duplicated text in notification records</comment>
+        <sql splitStatements="false">
+            UPDATE fcm_outbox
+            SET payload = JSON_SET(payload, '$.body', '새로운 채팅 메시지가 도착했습니다')
+            WHERE event_type = 'CHAT_MESSAGE'
+              AND JSON_VALID(payload)
+        </sql>
+        <sql splitStatements="false">
+            UPDATE fcm_dead_letter
+            SET payload = JSON_SET(payload, '$.body', '새로운 채팅 메시지가 도착했습니다')
+            WHERE JSON_VALID(payload)
+              AND JSON_UNQUOTE(JSON_EXTRACT(payload, '$.type')) = 'CHAT_MESSAGE'
+        </sql>
+    </changeSet>
+</databaseChangeLog>

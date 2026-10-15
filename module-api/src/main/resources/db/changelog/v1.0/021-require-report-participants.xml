@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="021-require-report-participants" author="system">
+        <preConditions onFail="HALT">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                FROM report
+                WHERE reporter_id IS NULL OR reported_member_id IS NULL
+            </sqlCheck>
+        </preConditions>
+        <comment>신고자와 신고 대상이 모두 존재하는 신고만 저장한다</comment>
+        <addNotNullConstraint tableName="report"
+                              columnName="reporter_id"
+                              columnDataType="BIGINT"/>
+        <addNotNullConstraint tableName="report"
+                              columnName="reported_member_id"
+                              columnDataType="BIGINT"/>
+        <rollback>
+            <dropNotNullConstraint tableName="report"
+                                   columnName="reported_member_id"
+                                   columnDataType="BIGINT"/>
+            <dropNotNullConstraint tableName="report"
+                                   columnName="reporter_id"
+                                   columnDataType="BIGINT"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

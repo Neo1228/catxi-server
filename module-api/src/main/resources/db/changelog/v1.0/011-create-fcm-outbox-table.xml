@@ -7,59 +7,59 @@
 
     <changeSet id="011" author="catxi-team">
         <comment>Create fcm_outbox table for Outbox Pattern</comment>
-        
+
         <createTable tableName="fcm_outbox">
             <column name="id" type="BIGINT" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            
+
             <column name="event_id" type="VARCHAR(36)">
                 <constraints nullable="false" unique="true"/>
             </column>
-            
+
             <column name="event_type" type="VARCHAR(50)">
                 <constraints nullable="false"/>
             </column>
-            
+
             <column name="payload" type="JSON">
                 <constraints nullable="false"/>
             </column>
-            
+
             <column name="status" type="VARCHAR(20)" defaultValue="PENDING">
                 <constraints nullable="false"/>
             </column>
-            
+
             <column name="retry_count" type="INT" defaultValue="0">
                 <constraints nullable="false"/>
             </column>
-            
+
             <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
-            
+
             <column name="sent_at" type="TIMESTAMP">
                 <constraints nullable="true"/>
             </column>
-            
+
             <column name="error_message" type="TEXT">
                 <constraints nullable="true"/>
             </column>
         </createTable>
-        
+
         <!-- 인덱스: 폴링 성능 최적화 -->
         <createIndex indexName="idx_fcm_outbox_status_created" tableName="fcm_outbox">
             <column name="status"/>
             <column name="created_at"/>
         </createIndex>
-        
+
         <!-- 인덱스: 이벤트 ID 조회 -->
         <createIndex indexName="idx_fcm_outbox_event_id" tableName="fcm_outbox">
             <column name="event_id"/>
         </createIndex>
-        
+
         <rollback>
             <dropTable tableName="fcm_outbox"/>
         </rollback>
     </changeSet>
-    
+
 </databaseChangeLog>

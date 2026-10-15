@@ -12,7 +12,7 @@
         </preConditions>
 
         <comment>Create chat_participant table</comment>
-        
+
         <createTable tableName="chat_participant">
             <column name="id" type="BIGINT" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
@@ -30,29 +30,29 @@
             <column name="created_time" type="DATETIME"/>
             <column name="updated_time" type="DATETIME"/>
         </createTable>
-        
-        <addForeignKeyConstraint 
-            baseTableName="chat_participant" 
-            baseColumnNames="chat_room_id" 
-            referencedTableName="chat_room" 
-            referencedColumnNames="room_id" 
+
+        <addForeignKeyConstraint
+            baseTableName="chat_participant"
+            baseColumnNames="chat_room_id"
+            referencedTableName="chat_room"
+            referencedColumnNames="room_id"
             constraintName="fk_chat_participant_room"/>
-            
-        <addForeignKeyConstraint 
-            baseTableName="chat_participant" 
-            baseColumnNames="member_id" 
-            referencedTableName="member" 
-            referencedColumnNames="id" 
+
+        <addForeignKeyConstraint
+            baseTableName="chat_participant"
+            baseColumnNames="member_id"
+            referencedTableName="member"
+            referencedColumnNames="id"
             constraintName="fk_chat_participant_member"/>
-        
+
         <createIndex tableName="chat_participant" indexName="idx_chat_participant_room">
             <column name="chat_room_id"/>
         </createIndex>
-        
+
         <createIndex tableName="chat_participant" indexName="idx_chat_participant_member">
             <column name="member_id"/>
         </createIndex>
-        
+
     </changeSet>
 
 </databaseChangeLog>

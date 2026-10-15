@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="020-index-match-history-member-page" author="system">
+        <comment>Support member history filtering and chronological cursor scans</comment>
+        <createIndex tableName="match_history" indexName="idx_match_history_member_created">
+            <column name="member_id"/>
+            <column name="created_at"/>
+            <column name="id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="020-drop-match-history-member-index" author="system">
+        <preConditions onFail="MARK_RAN">
+            <indexExists tableName="match_history" indexName="idx_match_history_member"/>
+        </preConditions>
+        <dropIndex tableName="match_history" indexName="idx_match_history_member"/>
+    </changeSet>
+
+    <changeSet id="020-index-match-history-fellas" author="system">
+        <comment>Support filtering match history by stored companion name</comment>
+        <createIndex tableName="match_history_fellas" indexName="idx_match_history_fellas_name_history">
+            <column name="fellas"/>
+            <column name="history_id"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

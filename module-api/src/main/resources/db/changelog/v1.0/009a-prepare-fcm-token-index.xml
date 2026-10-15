@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="009a-add-fcm-token-column" author="catxi-team">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="member" columnName="fcm_token"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="member">
+            <column name="fcm_token" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="009a-add-fcm-token-updated-at-column" author="catxi-team">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="member" columnName="fcm_token_updated_at"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="member">
+            <column name="fcm_token_updated_at" type="DATETIME">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="009a-create-fcm-token-prefix-index" author="catxi-team">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <and>
+                <tableExists tableName="member"/>
+                <columnExists tableName="member" columnName="fcm_token"/>
+                <not>
+                    <indexExists tableName="member" indexName="idx_member_fcm_token"/>
+                </not>
+            </and>
+        </preConditions>
+        <sql dbms="mysql">CREATE INDEX idx_member_fcm_token ON member (fcm_token(191))</sql>
+        <rollback>
+            <dropIndex tableName="member" indexName="idx_member_fcm_token"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="009a-verify-fcm-token-index" author="catxi-team">
+        <preConditions onFail="HALT" onError="HALT">
+            <and>
+                <tableExists tableName="member"/>
+                <columnExists tableName="member" columnName="fcm_token"/>
+                <columnExists tableName="member" columnName="fcm_token_updated_at"/>
+                <sqlCheck expectedResult="1">
+                    SELECT CASE
+                        WHEN COUNT(*) = 1
+                         AND MIN(column_name) = 'fcm_token'
+                         AND (
+                             MIN(sub_part) IS NOT NULL
+                             OR NOT EXISTS (
+                                 SELECT 1
+                                 FROM information_schema.columns
+                                 WHERE table_schema = DATABASE()
+                                   AND table_name = 'member'
+                                   AND column_name = 'fcm_token'
+                                   AND data_type IN (
+                                       'tinytext', 'text', 'mediumtext', 'longtext',
+                                       'tinyblob', 'blob', 'mediumblob', 'longblob'
+                                   )
+                             )
+                         )
+                        THEN 1 ELSE 0 END
+                    FROM information_schema.statistics
+                    WHERE table_schema = DATABASE()
+                      AND table_name = 'member'
+                      AND index_name = 'idx_member_fcm_token'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <sql>SELECT 1</sql>
+    </changeSet>
+
+</databaseChangeLog>

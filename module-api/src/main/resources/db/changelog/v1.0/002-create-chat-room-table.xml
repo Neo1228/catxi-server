@@ -12,7 +12,7 @@
         </preConditions>
 
         <comment>Create chat_room table</comment>
-        
+
         <createTable tableName="chat_room">
             <column name="room_id" type="BIGINT" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
@@ -41,22 +41,22 @@
             <column name="created_time" type="DATETIME"/>
             <column name="updated_time" type="DATETIME"/>
         </createTable>
-        
-        <addForeignKeyConstraint 
-            baseTableName="chat_room" 
-            baseColumnNames="host_id" 
-            referencedTableName="member" 
-            referencedColumnNames="id" 
+
+        <addForeignKeyConstraint
+            baseTableName="chat_room"
+            baseColumnNames="host_id"
+            referencedTableName="member"
+            referencedColumnNames="id"
             constraintName="fk_chat_room_host"/>
-            
+
         <createIndex tableName="chat_room" indexName="idx_chat_room_status">
             <column name="status"/>
         </createIndex>
-        
+
         <createIndex tableName="chat_room" indexName="idx_chat_room_depart_at">
             <column name="depart_at"/>
         </createIndex>
-        
+
     </changeSet>
 
 </databaseChangeLog>

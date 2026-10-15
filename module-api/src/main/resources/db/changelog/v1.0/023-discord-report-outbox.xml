@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="023-discord-report-outbox" author="catxi-team">
+        <comment>신고 트랜잭션과 Discord 전달을 분리하고 재시도 상태를 보존합니다. 신고 사유와 회원 식별 정보는 저장하지 않습니다.</comment>
+        <createTable tableName="report_discord_outbox">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="report_id" type="BIGINT">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uk_report_discord_outbox_report"/>
+            </column>
+            <column name="room_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="report_created_at" type="DATETIME(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(16)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="retry_count" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP(6)" defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="next_attempt_at" type="TIMESTAMP(6)" defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lease_owner" type="VARCHAR(128)"/>
+            <column name="lease_until" type="TIMESTAMP(6)"/>
+            <column name="sent_at" type="TIMESTAMP(6)"/>
+            <column name="failed_at" type="TIMESTAMP(6)"/>
+            <column name="error_code" type="VARCHAR(128)"/>
+        </createTable>
+
+        <createIndex indexName="idx_report_discord_outbox_claim" tableName="report_discord_outbox">
+            <column name="status"/>
+            <column name="next_attempt_at"/>
+            <column name="created_at"/>
+            <column name="id"/>
+        </createIndex>
+        <createIndex indexName="idx_report_discord_outbox_sent" tableName="report_discord_outbox">
+            <column name="status"/>
+            <column name="sent_at"/>
+            <column name="id"/>
+        </createIndex>
+        <createIndex indexName="idx_report_discord_outbox_status_created" tableName="report_discord_outbox">
+            <column name="status"/>
+            <column name="created_at"/>
+            <column name="id"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="report_discord_outbox"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="024-index-chat-message-replay" author="catxi">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists tableName="chat_message" indexName="idx_chat_message_room_id_cursor"/>
+            </not>
+        </preConditions>
+        <createIndex tableName="chat_message" indexName="idx_chat_message_room_id_cursor">
+            <column name="chat_room_id"/>
+            <column name="id"/>
+        </createIndex>
+        <rollback>
+            <dropIndex tableName="chat_message" indexName="idx_chat_message_room_id_cursor"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

@@ -12,7 +12,7 @@
         </preConditions>
 
         <comment>Add FCM token fields to member table</comment>
-        
+
         <addColumn tableName="member">
             <column name="fcm_token" type="TEXT">
                 <constraints nullable="true"/>
@@ -21,11 +21,11 @@
                 <constraints nullable="true"/>
             </column>
         </addColumn>
-        
+
         <createIndex tableName="member" indexName="idx_member_fcm_token">
             <column name="fcm_token"/>
         </createIndex>
-        
+
     </changeSet>
 
 </databaseChangeLog>

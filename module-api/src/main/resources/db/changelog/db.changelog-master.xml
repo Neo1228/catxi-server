@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Include changelog files here -->
+    <include file="v1.0/001-create-member-table.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/002-create-chat-room-table.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/003-create-chat-participant-table.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/004-create-kicked-participant-table.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/005-create-chat-message-table.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/006-create-match-history-table.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/007-create-match-history-fellas-table.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/008-create-report-table.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/009-fix-report-nullable-constraints.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/009a-prepare-fcm-token-index.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/010-create-fcm-token-table.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/011-create-fcm-outbox-table.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/012-create-fcm-dead-letter-table.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/013-database-concurrency-and-outbox-leases.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/014-persist-ready-timeout.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/015-index-fcm-outbox-retention.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/016-index-chat-history-cursor.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/017-redact-chat-notification-content.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/018-index-fcm-dead-letter-failed-at.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/019-enforce-unique-business-keys.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/020-index-match-history-queries.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/021-require-report-participants.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/022-chat-message-idempotency.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/023-discord-report-outbox.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/024-index-chat-message-replay.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/025-unique-member-nickname.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/026-match-history-room-key.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/027-persist-ready-participant-count.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/028-rename-match-history-participants.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/029-remove-discord-report-outbox.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/030-fcm-dead-letter-replay.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/031-fcm-failure-retention.xml" relativeToChangelogFile="true"/>
+
+</databaseChangeLog>

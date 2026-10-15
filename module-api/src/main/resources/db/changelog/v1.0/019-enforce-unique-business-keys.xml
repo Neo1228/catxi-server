@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="019-expand-member-email" author="system">
+        <comment>Allow standard-length email addresses received from OAuth providers</comment>
+        <modifyDataType tableName="member" columnName="email" newDataType="VARCHAR(254)"/>
+    </changeSet>
+
+    <changeSet id="019-unique-member-email" author="system">
+        <preConditions onFail="HALT">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                FROM (
+                    SELECT email
+                    FROM member
+                    GROUP BY email
+                    HAVING COUNT(*) &gt; 1
+                ) duplicate_emails
+            </sqlCheck>
+        </preConditions>
+        <comment>Reject duplicate member emails at the database boundary</comment>
+        <addUniqueConstraint tableName="member"
+                             columnNames="email"
+                             constraintName="uk_member_email"/>
+    </changeSet>
+
+    <changeSet id="019-drop-member-email-index" author="system">
+        <preConditions onFail="MARK_RAN">
+            <indexExists tableName="member" indexName="idx_member_email"/>
+        </preConditions>
+        <dropIndex tableName="member" indexName="idx_member_email"/>
+    </changeSet>
+
+    <changeSet id="019-drop-member-student-index" author="system">
+        <preConditions onFail="MARK_RAN">
+            <indexExists tableName="member" indexName="idx_member_student_no"/>
+        </preConditions>
+        <dropIndex tableName="member" indexName="idx_member_student_no"/>
+    </changeSet>
+
+    <changeSet id="019-unique-report-target" author="system">
+        <preConditions onFail="HALT">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                FROM report
+                WHERE reporter_id IS NULL OR reported_member_id IS NULL
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                FROM (
+                    SELECT room_id, reporter_id, reported_member_id
+                    FROM report
+                    GROUP BY room_id, reporter_id, reported_member_id
+                    HAVING COUNT(*) &gt; 1
+                ) duplicate_reports
+            </sqlCheck>
+        </preConditions>
+        <comment>Prevent the same reporter from submitting duplicate reports for a room member</comment>
+        <addUniqueConstraint tableName="report"
+                             columnNames="room_id, reporter_id, reported_member_id"
+                             constraintName="uk_report_room_reporter_target"/>
+    </changeSet>
+
+    <changeSet id="019-drop-report-room-index" author="system">
+        <preConditions onFail="MARK_RAN">
+            <indexExists tableName="report" indexName="idx_report_room"/>
+        </preConditions>
+        <dropIndex tableName="report" indexName="idx_report_room"/>
+    </changeSet>
+
+    <changeSet id="019-chat-room-capacity-range" author="system">
+        <preConditions onFail="HALT">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                FROM chat_room
+                WHERE max_capacity &lt; 1 OR max_capacity &gt; 4
+            </sqlCheck>
+        </preConditions>
+        <comment>Keep persisted room capacity within the supported participant limit</comment>
+        <sql dbms="mysql">
+            ALTER TABLE chat_room
+            ADD CONSTRAINT ck_chat_room_capacity_range CHECK (max_capacity BETWEEN 1 AND 4)
+        </sql>
+        <rollback>
+            <sql dbms="mysql">ALTER TABLE chat_room DROP CHECK ck_chat_room_capacity_range</sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

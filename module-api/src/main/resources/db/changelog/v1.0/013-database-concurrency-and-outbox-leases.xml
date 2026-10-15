@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="013-01-student-no-string-type" author="catxi-team">
+        <preConditions onFail="HALT" onError="HALT">
+            <tableExists tableName="member"/>
+            <columnExists tableName="member" columnName="student_no"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                FROM member
+                WHERE student_no IS NOT NULL
+                  AND CHAR_LENGTH(CAST(student_no AS CHAR)) &gt; 20
+            </sqlCheck>
+        </preConditions>
+        <comment>학번 컬럼을 애플리케이션 문자열 형식에 맞춥니다. 20자를 넘는 기존 값이 있으면 배포를 중단합니다.</comment>
+        <modifyDataType tableName="member" columnName="student_no" newDataType="VARCHAR(20)"/>
+    </changeSet>
+
+    <changeSet id="013-02-check-chat-participant-duplicates" author="catxi-team">
+        <preConditions onFail="HALT" onError="HALT">
+            <tableExists tableName="chat_participant"/>
+            <columnExists tableName="chat_participant" columnName="member_id"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                FROM chat_participant
+                WHERE member_id IS NULL
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                FROM (
+                    SELECT member_id
+                    FROM chat_participant
+                    GROUP BY member_id
+                    HAVING COUNT(*) &gt; 1
+                ) duplicate_members
+            </sqlCheck>
+        </preConditions>
+        <comment>회원당 활성 채팅방 하나라는 서비스 규칙을 유니크 제약으로 보장합니다.</comment>
+        <sql>SELECT 1</sql>
+    </changeSet>
+
+    <changeSet id="013-03-unique-chat-participant-member" author="catxi-team">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <and>
+                <tableExists tableName="chat_participant"/>
+                <columnExists tableName="chat_participant" columnName="member_id"/>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*)
+                    FROM (
+                        SELECT index_name
+                        FROM information_schema.statistics
+                        WHERE table_schema = DATABASE()
+                          AND table_name = 'chat_participant'
+                          AND non_unique = 0
+                        GROUP BY index_name
+                        HAVING COUNT(*) = 1 AND MIN(column_name) = 'member_id'
+                    ) existing_unique_indexes
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <addUniqueConstraint tableName="chat_participant"
+                             columnNames="member_id"
+                             constraintName="uk_chat_participant_member_id"/>
+        <rollback>
+            <dropUniqueConstraint tableName="chat_participant"
+                                  constraintName="uk_chat_participant_member_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="013-04-verify-chat-participant-member-unique" author="catxi-team">
+        <preConditions onFail="HALT" onError="HALT">
+            <and>
+                <tableExists tableName="chat_participant"/>
+                <sqlCheck expectedResult="1">
+                    SELECT CASE WHEN COUNT(*) &gt; 0 THEN 1 ELSE 0 END
+                    FROM (
+                        SELECT index_name
+                        FROM information_schema.statistics
+                        WHERE table_schema = DATABASE()
+                          AND table_name = 'chat_participant'
+                          AND non_unique = 0
+                        GROUP BY index_name
+                        HAVING COUNT(*) = 1 AND MIN(column_name) = 'member_id'
+                    ) member_unique_indexes
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <sql>SELECT 1</sql>
+    </changeSet>
+
+    <changeSet id="013-05-drop-redundant-chat-participant-member-index" author="catxi-team">
+        <preConditions onFail="MARK_RAN">
+            <indexExists tableName="chat_participant" indexName="idx_chat_participant_member"/>
+        </preConditions>
+        <dropIndex tableName="chat_participant" indexName="idx_chat_participant_member"/>
+        <rollback>
+            <createIndex tableName="chat_participant" indexName="idx_chat_participant_member">
+                <column name="member_id"/>
+            </createIndex>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="013-06-add-outbox-lease-owner" author="catxi-team">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="fcm_outbox" columnName="lease_owner"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="fcm_outbox">
+            <column name="lease_owner" type="VARCHAR(128)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="013-07-add-outbox-lease-until" author="catxi-team">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="fcm_outbox" columnName="lease_until"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="fcm_outbox">
+            <column name="lease_until" type="TIMESTAMP"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="013-08-add-outbox-next-attempt-at" author="catxi-team">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="fcm_outbox" columnName="next_attempt_at"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="fcm_outbox">
+            <column name="next_attempt_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="013-09-set-outbox-next-attempt-default" author="catxi-team">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <and>
+                <columnExists tableName="fcm_outbox" columnName="next_attempt_at"/>
+                <sqlCheck expectedResult="1">
+                    SELECT CASE WHEN column_default IS NULL THEN 1 ELSE 0 END
+                    FROM information_schema.columns
+                    WHERE table_schema = DATABASE()
+                      AND table_name = 'fcm_outbox'
+                      AND column_name = 'next_attempt_at'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <addDefaultValue tableName="fcm_outbox"
+                         columnName="next_attempt_at"
+                         columnDataType="TIMESTAMP"
+                         defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </changeSet>
+
+    <changeSet id="013-10-backfill-outbox-next-attempt-at" author="catxi-team">
+        <preConditions onFail="HALT" onError="HALT">
+            <tableExists tableName="fcm_outbox"/>
+            <columnExists tableName="fcm_outbox" columnName="next_attempt_at"/>
+            <columnExists tableName="fcm_outbox" columnName="created_at"/>
+        </preConditions>
+        <sql>UPDATE fcm_outbox SET next_attempt_at = created_at WHERE next_attempt_at IS NULL</sql>
+    </changeSet>
+
+    <changeSet id="013-11-make-outbox-next-attempt-at-required" author="catxi-team">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <and>
+                <tableExists tableName="fcm_outbox"/>
+                <sqlCheck expectedResult="1">
+                    SELECT CASE WHEN IS_NULLABLE = 'YES' THEN 1 ELSE 0 END
+                    FROM information_schema.columns
+                    WHERE table_schema = DATABASE()
+                      AND table_name = 'fcm_outbox'
+                      AND column_name = 'next_attempt_at'
+                </sqlCheck>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM fcm_outbox WHERE next_attempt_at IS NULL
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <addNotNullConstraint tableName="fcm_outbox"
+                              columnName="next_attempt_at"
+                              columnDataType="TIMESTAMP"/>
+    </changeSet>
+
+    <changeSet id="013-12-create-outbox-due-index" author="catxi-team">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <and>
+                <tableExists tableName="fcm_outbox"/>
+                <columnExists tableName="fcm_outbox" columnName="next_attempt_at"/>
+                <not>
+                    <indexExists tableName="fcm_outbox" indexName="idx_fcm_outbox_due"/>
+                </not>
+            </and>
+        </preConditions>
+        <createIndex tableName="fcm_outbox" indexName="idx_fcm_outbox_due">
+            <column name="status"/>
+            <column name="next_attempt_at"/>
+            <column name="created_at"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="013-13-verify-outbox-due-index" author="catxi-team">
+        <preConditions onFail="HALT" onError="HALT">
+            <and>
+                <tableExists tableName="fcm_outbox"/>
+                <sqlCheck expectedResult="1">
+                    SELECT CASE
+                        WHEN COUNT(*) = 3
+                         AND SUM(CASE WHEN seq_in_index = 1 AND column_name = 'status' THEN 1 ELSE 0 END) = 1
+                         AND SUM(CASE WHEN seq_in_index = 2 AND column_name = 'next_attempt_at' THEN 1 ELSE 0 END) = 1
+                         AND SUM(CASE WHEN seq_in_index = 3 AND column_name = 'created_at' THEN 1 ELSE 0 END) = 1
+                        THEN 1 ELSE 0 END
+                    FROM information_schema.statistics
+                    WHERE table_schema = DATABASE()
+                      AND table_name = 'fcm_outbox'
+                      AND index_name = 'idx_fcm_outbox_due'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <sql>SELECT 1</sql>
+    </changeSet>
+
+</databaseChangeLog>

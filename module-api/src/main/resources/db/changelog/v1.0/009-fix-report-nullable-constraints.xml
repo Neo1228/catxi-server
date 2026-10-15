@@ -8,30 +8,30 @@
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="report"/>
         </preConditions>
-        
+
         <comment>Fix Report table nullable constraints to match entity requirements</comment>
-        
+
         <!-- First, delete any rows with NULL values as they are invalid reports -->
         <sql>
             DELETE FROM report WHERE reporter_id IS NULL OR reported_member_id IS NULL;
         </sql>
-        
+
         <!-- Add NOT NULL constraints -->
-        <addNotNullConstraint 
-            tableName="report" 
-            columnName="reporter_id" 
+        <addNotNullConstraint
+            tableName="report"
+            columnName="reporter_id"
             columnDataType="BIGINT"/>
-            
-        <addNotNullConstraint 
-            tableName="report" 
-            columnName="reported_member_id" 
+
+        <addNotNullConstraint
+            tableName="report"
+            columnName="reported_member_id"
             columnDataType="BIGINT"/>
-        
+
         <rollback>
             <dropNotNullConstraint tableName="report" columnName="reporter_id" columnDataType="BIGINT"/>
             <dropNotNullConstraint tableName="report" columnName="reported_member_id" columnDataType="BIGINT"/>
         </rollback>
-        
+
     </changeSet>
 
 </databaseChangeLog>

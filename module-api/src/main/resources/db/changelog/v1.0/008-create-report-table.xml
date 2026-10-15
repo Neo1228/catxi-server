@@ -26,33 +26,33 @@
             <column name="created_time" type="DATETIME"/>
             <column name="updated_time" type="DATETIME"/>
         </createTable>
-        
-        <addForeignKeyConstraint 
-            baseTableName="report" 
-            baseColumnNames="reporter_id" 
-            referencedTableName="member" 
-            referencedColumnNames="id" 
+
+        <addForeignKeyConstraint
+            baseTableName="report"
+            baseColumnNames="reporter_id"
+            referencedTableName="member"
+            referencedColumnNames="id"
             constraintName="fk_report_reporter"/>
-            
-        <addForeignKeyConstraint 
-            baseTableName="report" 
-            baseColumnNames="reported_member_id" 
-            referencedTableName="member" 
-            referencedColumnNames="id" 
+
+        <addForeignKeyConstraint
+            baseTableName="report"
+            baseColumnNames="reported_member_id"
+            referencedTableName="member"
+            referencedColumnNames="id"
             constraintName="fk_report_reported_member"/>
-        
+
         <createIndex tableName="report" indexName="idx_report_room">
             <column name="room_id"/>
         </createIndex>
-        
+
         <createIndex tableName="report" indexName="idx_report_reporter">
             <column name="reporter_id"/>
         </createIndex>
-        
+
         <createIndex tableName="report" indexName="idx_report_reported_member">
             <column name="reported_member_id"/>
         </createIndex>
-        
+
     </changeSet>
 
 </databaseChangeLog>

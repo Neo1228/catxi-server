@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="028-rename-match-history-table" author="catxi">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="match_history_fellas"/>
+            <not>
+                <tableExists tableName="match_history_participants"/>
+            </not>
+        </preConditions>
+        <renameTable oldTableName="match_history_fellas" newTableName="match_history_participants"/>
+    </changeSet>
+
+    <changeSet id="029-rename-match-history-participant-column" author="catxi">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="match_history_participants"/>
+                <columnExists tableName="match_history_participants" columnName="fellas"/>
+                <not>
+                    <columnExists tableName="match_history_participants" columnName="participants"/>
+                </not>
+            </and>
+        </preConditions>
+        <renameColumn tableName="match_history_participants"
+                      oldColumnName="fellas"
+                      newColumnName="participants"
+                      columnDataType="VARCHAR(255)"/>
+    </changeSet>
+
+</databaseChangeLog>

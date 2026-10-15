@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="018-01-index-dead-letter-failed-at" author="catxi-team">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <and>
+                <tableExists tableName="fcm_dead_letter"/>
+                <columnExists tableName="fcm_dead_letter" columnName="failed_at"/>
+                <not>
+                    <indexExists tableName="fcm_dead_letter" indexName="idx_fcm_dead_letter_failed_at"/>
+                </not>
+            </and>
+        </preConditions>
+        <createIndex indexName="idx_fcm_dead_letter_failed_at" tableName="fcm_dead_letter">
+            <column name="failed_at"/>
+        </createIndex>
+        <rollback>
+            <dropIndex indexName="idx_fcm_dead_letter_failed_at" tableName="fcm_dead_letter"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="018-02-verify-dead-letter-failed-at-index" author="catxi-team">
+        <preConditions onFail="HALT" onError="HALT">
+            <sqlCheck expectedResult="1">
+                SELECT CASE
+                    WHEN COUNT(*) = 1
+                     AND MIN(seq_in_index) = 1
+                     AND MIN(column_name) = 'failed_at'
+                    THEN 1 ELSE 0 END
+                FROM information_schema.statistics
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'fcm_dead_letter'
+                  AND index_name = 'idx_fcm_dead_letter_failed_at'
+            </sqlCheck>
+        </preConditions>
+        <sql>SELECT 1</sql>
+    </changeSet>
+
+</databaseChangeLog>

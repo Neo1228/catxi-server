@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="031-01-add-outbox-failed-at" author="catxi-team">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <and>
+                <tableExists tableName="fcm_outbox"/>
+                <not>
+                    <columnExists tableName="fcm_outbox" columnName="failed_at"/>
+                </not>
+            </and>
+        </preConditions>
+        <addColumn tableName="fcm_outbox">
+            <column name="failed_at" type="TIMESTAMP(6)"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="fcm_outbox" columnName="failed_at"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="031-02-backfill-outbox-failed-at" author="catxi-team">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <and>
+                <tableExists tableName="fcm_outbox"/>
+                <columnExists tableName="fcm_outbox" columnName="failed_at"/>
+            </and>
+        </preConditions>
+        <sql>
+            UPDATE fcm_outbox
+            SET failed_at = created_at
+            WHERE status = 'FAILED' AND failed_at IS NULL
+        </sql>
+    </changeSet>
+
+    <changeSet id="031-03-index-outbox-failure-retention" author="catxi-team">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <and>
+                <tableExists tableName="fcm_outbox"/>
+                <columnExists tableName="fcm_outbox" columnName="failed_at"/>
+                <not>
+                    <indexExists tableName="fcm_outbox" indexName="idx_fcm_outbox_status_failed_at"/>
+                </not>
+            </and>
+        </preConditions>
+        <createIndex tableName="fcm_outbox" indexName="idx_fcm_outbox_status_failed_at">
+            <column name="status"/>
+            <column name="failed_at"/>
+        </createIndex>
+        <rollback>
+            <dropIndex tableName="fcm_outbox" indexName="idx_fcm_outbox_status_failed_at"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="031-04-verify-outbox-failure-retention-index" author="catxi-team">
+        <preConditions onFail="HALT" onError="HALT">
+            <sqlCheck expectedResult="1">
+                SELECT CASE
+                    WHEN COUNT(*) = 2
+                     AND SUM(CASE WHEN seq_in_index = 1 AND column_name = 'status' THEN 1 ELSE 0 END) = 1
+                     AND SUM(CASE WHEN seq_in_index = 2 AND column_name = 'failed_at' THEN 1 ELSE 0 END) = 1
+                    THEN 1 ELSE 0 END
+                FROM information_schema.statistics
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'fcm_outbox'
+                  AND index_name = 'idx_fcm_outbox_status_failed_at'
+            </sqlCheck>
+        </preConditions>
+        <sql>SELECT 1</sql>
+    </changeSet>
+</databaseChangeLog>

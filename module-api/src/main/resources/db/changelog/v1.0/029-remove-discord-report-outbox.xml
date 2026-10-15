@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="029-remove-discord-report-outbox" author="catxi-team">
+        <preConditions onFail="HALT"
+                       onError="HALT"
+                       onFailMessage="report_discord_outbox에 PENDING 또는 FAILED 행이 남아 있습니다. 기존 알림을 처리한 뒤 다시 배포하세요.">
+            <tableExists tableName="report_discord_outbox"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                FROM report_discord_outbox
+                WHERE status &lt;&gt; 'SENT'
+            </sqlCheck>
+        </preConditions>
+        <comment>Discord 신고 알림은 커밋 후 best-effort로 전송하므로 더 이상 아웃박스 테이블을 사용하지 않습니다.</comment>
+        <dropTable tableName="report_discord_outbox"/>
+    </changeSet>
+</databaseChangeLog>
