@@ -234,8 +234,8 @@ public class TokenService {
         return null;
       }
       log.info("Token reissued");
-    IssuedTokens tokens = new IssuedTokens(newAccessToken, newRefreshToken, refreshTokenTtl);
-    return new RefreshResult(tokens, member);
+      IssuedTokens tokens = new IssuedTokens(newAccessToken, newRefreshToken, refreshTokenTtl);
+      return new RefreshResult(tokens, member);
 
     } catch (Exception e) {
       log.warn("Token reissue failed: {}", e.getClass().getSimpleName());

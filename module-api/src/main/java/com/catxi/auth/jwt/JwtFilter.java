@@ -13,7 +13,6 @@ import com.catxi.member.domain.Member;
 import com.catxi.member.domain.MemberStatus;
 import com.catxi.member.error.MemberErrorCode;
 import com.catxi.member.repository.MemberRepository;
-import tools.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
@@ -29,6 +28,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
+import tools.jackson.databind.ObjectMapper;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -95,8 +95,7 @@ public class JwtFilter extends OncePerRequestFilter {
                       refreshedToken.tokens().refreshToken(),
                       refreshedToken.tokens().refreshTokenTtl())
                   .toString());
-          response.setHeader(
-              AUTH_HEADER, BEARER_PREFIX + refreshedToken.tokens().accessToken());
+          response.setHeader(AUTH_HEADER, BEARER_PREFIX + refreshedToken.tokens().accessToken());
           response.setHeader("X-Access-Token-Refreshed", "true");
           String exposedHeaders = response.getHeader("Access-Control-Expose-Headers");
           String headersToExpose = AUTH_HEADER + ",X-Access-Token-Refreshed";

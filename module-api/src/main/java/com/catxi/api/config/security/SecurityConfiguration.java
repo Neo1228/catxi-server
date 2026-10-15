@@ -9,7 +9,6 @@ import com.catxi.common.api.ApiResponse;
 import com.catxi.common.api.error.CommonErrorCode;
 import com.catxi.common.api.error.ErrorCode;
 import com.catxi.member.repository.MemberRepository;
-import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,6 +24,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
+import tools.jackson.databind.ObjectMapper;
 
 @Configuration
 @EnableWebSecurity
