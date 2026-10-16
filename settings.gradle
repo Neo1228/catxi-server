@@ -16,4 +16,3 @@ rootProject.name = 'catxi'
 
 include 'module-api'
 include 'module-worker'
-include 'module-contract'
