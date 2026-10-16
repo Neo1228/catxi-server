@@ -2,7 +2,6 @@ package com.catxi.chat.repository;
 
 import com.catxi.chat.domain.ChatParticipant;
 import com.catxi.chat.domain.ChatRoom;
-import com.catxi.member.domain.Member;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,11 +12,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 public interface ChatParticipantRepository extends JpaRepository<ChatParticipant, Long> {
 
-  boolean existsByMember(Member member);
+  boolean existsByMemberId(Long memberId);
 
-  boolean existsByChatRoomAndMember(ChatRoom room, Member member);
+  boolean existsByChatRoomAndMemberId(ChatRoom room, Long memberId);
 
-  Optional<ChatParticipant> findByChatRoomAndMember(ChatRoom room, Member member);
+  boolean existsByChatRoom_RoomIdAndMemberId(Long roomId, Long memberId);
+
+  Optional<ChatParticipant> findByChatRoomAndMemberId(ChatRoom room, Long memberId);
 
   long countByChatRoom(ChatRoom room);
 
@@ -26,28 +27,14 @@ public interface ChatParticipantRepository extends JpaRepository<ChatParticipant
   List<ChatParticipant> findByChatRoom(ChatRoom chatRoom);
 
   @Query(
-      "SELECT participant.member.id FROM ChatParticipant participant WHERE participant.chatRoom = :chatRoom")
+      "SELECT participant.memberId FROM ChatParticipant participant WHERE participant.chatRoom = :chatRoom")
   List<Long> findMemberIdsByChatRoom(@Param("chatRoom") ChatRoom chatRoom);
 
   @Query(
-      "SELECT participant.member.id FROM ChatParticipant participant "
-          + "WHERE participant.chatRoom = :chatRoom AND participant.member.id <> :senderId")
+      "SELECT participant.memberId FROM ChatParticipant participant "
+          + "WHERE participant.chatRoom = :chatRoom AND participant.memberId <> :senderId")
   List<Long> findRecipientMemberIdsByChatRoom(
       @Param("chatRoom") ChatRoom chatRoom, @Param("senderId") Long senderId);
-
-  @Query(
-      "SELECT member.email AS email, member.memberName AS memberName, member.nickname AS nickname "
-          + "FROM ChatParticipant participant JOIN participant.member member "
-          + "WHERE participant.chatRoom = :chatRoom")
-  List<ChatParticipantSummary> findSummariesByChatRoom(@Param("chatRoom") ChatRoom chatRoom);
-
-  interface ChatParticipantSummary {
-    String getEmail();
-
-    String getMemberName();
-
-    String getNickname();
-  }
 
   @Modifying(clearAutomatically = true)
   @Transactional
@@ -58,9 +45,5 @@ public interface ChatParticipantRepository extends JpaRepository<ChatParticipant
   @Transactional
   void deleteAllByChatRoomAndIsReadyFalse(ChatRoom chatroom);
 
-  @Query(
-      "SELECT cp.member.nickname FROM ChatParticipant cp WHERE cp.chatRoom = :chatRoom AND cp.isReady = false")
-  List<String> findNicknamesByChatRoomAndIsReadyFalse(ChatRoom chatRoom);
-
-  Optional<ChatParticipant> findByMember(Member member);
+  Optional<ChatParticipant> findByMemberId(Long memberId);
 }

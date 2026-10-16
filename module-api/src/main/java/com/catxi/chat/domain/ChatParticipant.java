@@ -1,7 +1,6 @@
 package com.catxi.chat.domain;
 
-import com.catxi.common.domain.BaseTimeEntity;
-import com.catxi.member.domain.Member;
+import com.catxi.common.persistence.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -32,9 +31,8 @@ public class ChatParticipant extends BaseTimeEntity {
   @JoinColumn(name = "chat_room_id", nullable = false)
   private ChatRoom chatRoom;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "member_id", nullable = false)
-  private Member member;
+  @Column(name = "member_id", nullable = false)
+  private Long memberId;
 
   @JdbcTypeCode(SqlTypes.TINYINT)
   private boolean isReady;

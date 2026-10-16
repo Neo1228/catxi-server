@@ -1,6 +1,6 @@
 package com.catxi.chat.domain;
 
-import com.catxi.member.domain.Member;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -28,7 +28,6 @@ public class KickedParticipant {
   @JoinColumn(name = "chat_room_id", nullable = false)
   private ChatRoom chatRoom;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "member_id", nullable = false)
-  private Member member;
+  @Column(name = "member_id", nullable = false)
+  private Long memberId;
 }

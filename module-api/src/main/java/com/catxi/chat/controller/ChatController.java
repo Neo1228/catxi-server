@@ -1,23 +1,24 @@
 package com.catxi.chat.controller;
 
-import com.catxi.auth.security.CustomUserDetails;
-import com.catxi.chat.dto.ChatMessagePageRes;
-import com.catxi.chat.dto.ChatMessageRes;
-import com.catxi.chat.dto.ChatRoomInfoRes;
-import com.catxi.chat.dto.ChatRoomPageRes;
+import com.catxi.chat.dto.ChatMessagePageResponse;
+import com.catxi.chat.dto.ChatMessageResponse;
+import com.catxi.chat.dto.ChatRoomInfoResponse;
+import com.catxi.chat.dto.ChatRoomPageResponse;
+import com.catxi.chat.dto.ChatRoomResponse;
 import com.catxi.chat.dto.KickRequest;
-import com.catxi.chat.dto.RoomCreateReq;
-import com.catxi.chat.dto.RoomCreateRes;
+import com.catxi.chat.dto.RoomCreateRequest;
+import com.catxi.chat.dto.RoomCreateResponse;
 import com.catxi.chat.service.ChatMessageService;
 import com.catxi.chat.service.ChatRoomService;
 import com.catxi.common.api.ApiResponse;
+import com.catxi.common.api.CommonPageResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
+import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -42,11 +43,24 @@ public class ChatController {
 
   @Operation(summary = "채팅방 생성", description = "로그인한 사용자가 새로운 채팅방을 생성합니다.")
   @PostMapping("/room/create")
-  public ResponseEntity<ApiResponse<RoomCreateRes>> createRoom(
-      @Valid @RequestBody RoomCreateReq roomCreateReq,
-      @AuthenticationPrincipal CustomUserDetails userDetails) {
-    String email = userDetails.getUsername();
-    RoomCreateRes res = chatRoomService.createRoom(roomCreateReq, email);
+  public ResponseEntity<ApiResponse<RoomCreateResponse>> createRoom(
+      @Valid @RequestBody RoomCreateRequest roomCreateReq, Principal principal) {
+    String email = principal.getName();
+    ChatRoomService.CreatedRoom createdRoom =
+        chatRoomService.createRoom(
+            roomCreateReq.startPoint(),
+            roomCreateReq.endPoint(),
+            roomCreateReq.departAt(),
+            roomCreateReq.recruitSize(),
+            email);
+    RoomCreateResponse res =
+        new RoomCreateResponse(
+            createdRoom.roomId(),
+            createdRoom.startPoint(),
+            createdRoom.endPoint(),
+            createdRoom.recruitSize(),
+            createdRoom.departAt(),
+            createdRoom.status());
     return ResponseEntity.ok(ApiResponse.success(res));
   }
 
@@ -55,11 +69,14 @@ public class ChatController {
       description = "채팅 이력이 100건 이하인 방에서만 사용할 수 있습니다. 그 이상은 페이지 조회 API를 사용합니다.",
       deprecated = true)
   @GetMapping("/{roomId}/messages")
-  public ResponseEntity<ApiResponse<List<ChatMessageRes>>> getHistory(
-      @PathVariable Long roomId, @AuthenticationPrincipal CustomUserDetails userDetails) {
+  public ResponseEntity<ApiResponse<List<ChatMessageResponse>>> getHistory(
+      @PathVariable Long roomId, Principal principal) {
 
-    String email = userDetails.getUsername();
-    List<ChatMessageRes> history = chatMessageService.getChatHistory(roomId, email);
+    String email = principal.getName();
+    List<ChatMessageResponse> history =
+        chatMessageService.getChatHistory(roomId, email).stream()
+            .map(ChatController::toChatMessageResponse)
+            .toList();
 
     return ResponseEntity.ok(ApiResponse.success(history));
   }
@@ -69,21 +86,22 @@ public class ChatController {
       description =
           "기본 조회는 최신 메시지부터 이전 이력을 반환합니다. beforeCreatedAt과 beforeMessageId를 함께 전달해 이전 페이지를 조회하거나, 두 값 대신 afterMessageId를 전달해 해당 메시지 이후의 새 메시지를 ID 오름차순으로 복구합니다.")
   @GetMapping("/{roomId}/messages/page")
-  public ResponseEntity<ApiResponse<ChatMessagePageRes>> getChatHistoryPage(
+  public ResponseEntity<ApiResponse<ChatMessagePageResponse>> getChatHistoryPage(
       @PathVariable Long roomId,
       @RequestParam(defaultValue = "50") int limit,
       @RequestParam(required = false) LocalDateTime beforeCreatedAt,
       @RequestParam(required = false) Long beforeMessageId,
       @RequestParam(required = false) Long afterMessageId,
-      @AuthenticationPrincipal CustomUserDetails userDetails) {
-    ChatMessagePageRes page =
+      Principal principal) {
+    ChatMessageService.MessagePage messagePage =
         chatMessageService.getChatHistoryPage(
-            roomId,
-            userDetails.getUsername(),
-            beforeCreatedAt,
-            beforeMessageId,
-            afterMessageId,
-            limit);
+            roomId, principal.getName(), beforeCreatedAt, beforeMessageId, afterMessageId, limit);
+    ChatMessagePageResponse page =
+        new ChatMessagePageResponse(
+            messagePage.messages().stream().map(ChatController::toChatMessageResponse).toList(),
+            messagePage.nextCreatedAt(),
+            messagePage.nextMessageId(),
+            messagePage.hasMore());
     return ResponseEntity.ok(ApiResponse.success(page));
   }
 
@@ -99,23 +117,35 @@ public class ChatController {
 			- page: 페이지 번호 (기본값은 0입니다).
 			""")
   @GetMapping("/rooms")
-  public ResponseEntity<ApiResponse<ChatRoomPageRes>> getRoomList(
+  public ResponseEntity<ApiResponse<ChatRoomPageResponse>> getRoomList(
       @RequestParam("direction") String direction,
       @RequestParam("station") String station,
       @RequestParam("sort") String sort,
       @RequestParam(value = "page", defaultValue = "0") int page,
-      @AuthenticationPrincipal CustomUserDetails userDetails) {
-    ChatRoomPageRes roomPage =
-        chatRoomService.getChatRoomPage(direction, station, sort, page, userDetails.getUsername());
+      Principal principal) {
+    ChatRoomService.RoomPage result =
+        chatRoomService.getChatRoomPage(direction, station, sort, page, principal.getName());
+    List<ChatRoomResponse> rooms =
+        result.rooms().stream().map(ChatController::toChatRoomResponse).toList();
+    ChatRoomPageResponse roomPage =
+        new ChatRoomPageResponse(
+            result.myRoomId(),
+            CommonPageResponse.of(
+                rooms,
+                result.totalPages(),
+                result.totalElements(),
+                result.currentPage(),
+                result.size(),
+                result.hasNext()));
     return ResponseEntity.ok(ApiResponse.success(roomPage));
   }
 
   @Operation(summary = "채팅방 나가기", description = "로그인한 사용자가 해당 채팅방에서 나갑니다.")
   @DeleteMapping("/{roomId}/leave")
   public ResponseEntity<ApiResponse<Void>> leaveRoom(
-      @PathVariable Long roomId, @AuthenticationPrincipal CustomUserDetails userDetails) {
+      @PathVariable Long roomId, Principal principal) {
 
-    String email = userDetails.getUsername();
+    String email = principal.getName();
     chatRoomService.leaveChatRoom(roomId, email);
     return ResponseEntity.ok(ApiResponse.successWithNoData());
   }
@@ -123,9 +153,9 @@ public class ChatController {
   @Operation(summary = "채팅방 참여", description = "로그인한 사용자가 지정한 채팅방에 참여합니다.")
   @PostMapping("/rooms/{roomId}/join")
   public ResponseEntity<ApiResponse<Void>> joinChatRoom(
-      @PathVariable Long roomId, @AuthenticationPrincipal CustomUserDetails userDetails) {
+      @PathVariable Long roomId, Principal principal) {
 
-    String email = userDetails.getUsername();
+    String email = principal.getName();
     chatRoomService.joinChatRoom(roomId, email);
     return ResponseEntity.ok(ApiResponse.successWithNoData());
   }
@@ -133,10 +163,8 @@ public class ChatController {
   @PostMapping("/rooms/{roomId}/kick")
   @Operation(summary = "채팅방 유저 강퇴 (방장만 가능)")
   public ResponseEntity<ApiResponse<Void>> kickUser(
-      @PathVariable Long roomId,
-      @Valid @RequestBody KickRequest request,
-      @AuthenticationPrincipal CustomUserDetails userDetails) {
-    String requesterEmail = userDetails.getUsername();
+      @PathVariable Long roomId, @Valid @RequestBody KickRequest request, Principal principal) {
+    String requesterEmail = principal.getName();
     chatRoomService.kickUser(roomId, requesterEmail, request.targetEmail());
     return ResponseEntity.ok(ApiResponse.successWithNoData());
   }
@@ -152,29 +180,67 @@ public class ChatController {
           - 방장이 아닐 경우 예외가 발생합니다.
           """)
   public ResponseEntity<ApiResponse<Void>> removeChatRoom(
-      @PathVariable Long roomId, @AuthenticationPrincipal CustomUserDetails userDetails) {
+      @PathVariable Long roomId, Principal principal) {
 
-    String email = userDetails.getUsername();
+    String email = principal.getName();
     chatRoomService.removeChatRoom(roomId, email);
     return ResponseEntity.ok(ApiResponse.successWithNoData());
   }
 
   @Operation(summary = "나의 채팅방 ID 조회", description = "현재 참여 중인 채팅방의 ID를 반환합니다.")
   @GetMapping("/rooms/myid")
-  public ResponseEntity<ApiResponse<Long>> getMyRoomId(
-      @AuthenticationPrincipal CustomUserDetails userDetails) {
-    String email = userDetails.getUsername();
+  public ResponseEntity<ApiResponse<Long>> getMyRoomId(Principal principal) {
+    String email = principal.getName();
     Long roomId = chatRoomService.getMyChatRoomId(email);
     return ResponseEntity.ok(ApiResponse.success(roomId));
   }
 
   @Operation(summary = "채팅방 정보 조회", description = "채팅방 ID를 통해 채팅방의 정보를 조회합니다.")
   @GetMapping("/rooms/{roomId}")
-  public ResponseEntity<ApiResponse<ChatRoomInfoRes>> getChatRoomInfo(
-      @PathVariable Long roomId, @AuthenticationPrincipal CustomUserDetails userDetails) {
+  public ResponseEntity<ApiResponse<ChatRoomInfoResponse>> getChatRoomInfo(
+      @PathVariable Long roomId, Principal principal) {
 
-    String email = userDetails.getUsername();
-    ChatRoomInfoRes chatRoomRes = chatRoomService.getChatRoomInfo(roomId, email);
+    String email = principal.getName();
+    ChatRoomService.RoomDetails details = chatRoomService.getChatRoomInfo(roomId, email);
+    ChatRoomInfoResponse chatRoomRes =
+        new ChatRoomInfoResponse(
+            details.currentSize(),
+            details.recruitSize(),
+            details.roomStatus(),
+            details.hostEmail(),
+            details.hostNickname(),
+            details.participantEmails(),
+            details.participantNicknames(),
+            details.startPoint(),
+            details.endPoint(),
+            details.departAt());
     return ResponseEntity.ok(ApiResponse.success(chatRoomRes));
+  }
+
+  private static ChatMessageResponse toChatMessageResponse(ChatMessageService.MessageView message) {
+    return new ChatMessageResponse(
+        message.senderEmail(),
+        message.messageId(),
+        message.roomId(),
+        message.senderId(),
+        message.senderName(),
+        message.content(),
+        message.sentAt());
+  }
+
+  private static ChatRoomResponse toChatRoomResponse(ChatRoomService.RoomListItem room) {
+    return new ChatRoomResponse(
+        room.roomId(),
+        room.hostId(),
+        room.hostName(),
+        room.hostNickname(),
+        room.matchCount(),
+        room.startPoint(),
+        room.endPoint(),
+        room.recruitSize(),
+        room.currentSize(),
+        room.status(),
+        room.departAt(),
+        room.createdTime());
   }
 }

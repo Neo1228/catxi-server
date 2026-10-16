@@ -1,19 +1,15 @@
 package com.catxi.chat.domain;
 
-import com.catxi.common.domain.BaseTimeEntity;
 import com.catxi.common.domain.Location;
-import com.catxi.member.domain.Member;
+import com.catxi.common.persistence.BaseTimeEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -34,9 +30,8 @@ public class ChatRoom extends BaseTimeEntity {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long roomId;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "host_id")
-  private Member host;
+  @Column(name = "host_id", nullable = false)
+  private Long hostId;
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)

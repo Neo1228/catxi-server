@@ -2,7 +2,7 @@ package com.catxi.chat.dto;
 
 import java.time.LocalDateTime;
 
-public record ChatMessageRes(
+public record ChatMessageResponse(
     String senderEmail,
     Long messageId,
     Long roomId,

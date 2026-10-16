@@ -1,13 +1,9 @@
 package com.catxi.chat.repository;
 
-import com.catxi.chat.domain.ChatRoomSummary;
 import com.catxi.chat.domain.QChatParticipant;
 import com.catxi.chat.domain.QChatRoom;
 import com.catxi.chat.domain.RoomStatus;
-import com.catxi.chat.error.ChatRoomErrorCode;
-import com.catxi.common.api.exception.CatxiException;
 import com.catxi.common.domain.Location;
-import com.catxi.member.domain.QMember;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -40,18 +36,13 @@ public class ChatRoomRepositoryCustomImpl implements ChatRoomRepositoryCustom {
       Location location, String point, Pageable pageable) {
     QChatRoom chatRoom = QChatRoom.chatRoom;
     QChatParticipant participant = QChatParticipant.chatParticipant;
-    QMember host = QMember.member;
-
     List<ChatRoomSummary> chatRooms =
         jpaQueryFactory
             .select(
                 Projections.constructor(
                     ChatRoomSummary.class,
                     chatRoom.roomId,
-                    host.id,
-                    host.memberName,
-                    host.nickname,
-                    host.matchCount,
+                    chatRoom.hostId,
                     chatRoom.startPoint,
                     chatRoom.endPoint,
                     chatRoom.maxCapacity,
@@ -60,7 +51,6 @@ public class ChatRoomRepositoryCustomImpl implements ChatRoomRepositoryCustom {
                     chatRoom.departAt,
                     chatRoom.createdTime))
             .from(chatRoom)
-            .join(chatRoom.host, host)
             .leftJoin(chatRoom.participants, participant)
             .where(
                 chatRoom.status.eq(RoomStatus.WAITING), filterByLocationAndPoint(location, point))
@@ -91,7 +81,7 @@ public class ChatRoomRepositoryCustomImpl implements ChatRoomRepositoryCustom {
                 order.isAscending() ? chatRoom.departAt.asc() : chatRoom.departAt.desc();
             case "createdTime" ->
                 order.isAscending() ? chatRoom.createdTime.asc() : chatRoom.createdTime.desc();
-            default -> throw new CatxiException(ChatRoomErrorCode.INVALID_CHATROOM_PARAMETER);
+            default -> throw new IllegalStateException("서비스 검증을 거치지 않은 채팅방 정렬 기준입니다.");
           };
       orderSpecifiers.add(orderSpecifier);
     }
@@ -108,7 +98,7 @@ public class ChatRoomRepositoryCustomImpl implements ChatRoomRepositoryCustom {
     } else if (point.equals("FROM_SCHOOL")) {
       return location == null ? chatRoom.endPoint.in(STATIONS) : chatRoom.endPoint.eq(location);
     } else {
-      throw new CatxiException(ChatRoomErrorCode.INVALID_CHATROOM_PARAMETER);
+      throw new IllegalStateException("서비스 검증을 거치지 않은 채팅방 방향입니다.");
     }
   }
 }

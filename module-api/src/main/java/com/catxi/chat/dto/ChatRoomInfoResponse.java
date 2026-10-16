@@ -4,25 +4,20 @@ import com.catxi.chat.domain.RoomStatus;
 import com.catxi.common.domain.Location;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalDateTime;
+import java.util.List;
 
-public record ChatRoomRes(
-    Long roomId,
-    Long hostId,
-    String hostName,
+public record ChatRoomInfoResponse(
+    Long currentSize,
+    Long recruitSize,
+    RoomStatus roomStatus,
+    String hostEmail,
     String hostNickname,
-    Integer matchCount,
+    List<String> participantEmails,
+    List<String> participantNicknames,
     Location startPoint,
     Location endPoint,
-    Long recruitSize,
-    Long currentSize,
-    RoomStatus status,
     @JsonFormat(
             shape = JsonFormat.Shape.STRING,
             pattern = "yyyy-MM-dd'T'HH:mm:ss",
             timezone = "Asia/Seoul")
-        LocalDateTime departAt,
-    @JsonFormat(
-            shape = JsonFormat.Shape.STRING,
-            pattern = "yyyy-MM-dd'T'HH:mm:ss",
-            timezone = "Asia/Seoul")
-        LocalDateTime createdTime) {}
+        LocalDateTime departAt) {}

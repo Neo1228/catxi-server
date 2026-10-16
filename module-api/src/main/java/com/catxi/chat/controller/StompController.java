@@ -1,6 +1,6 @@
 package com.catxi.chat.controller;
 
-import com.catxi.chat.dto.ChatMessageSendReq;
+import com.catxi.chat.realtime.dto.ChatMessageSendRequest;
 import com.catxi.chat.service.ChatMessageDeliveryService;
 import jakarta.validation.Valid;
 import java.security.Principal;
@@ -17,7 +17,10 @@ public class StompController {
 
   @MessageMapping("/{roomId}")
   public void sendMessage(
-      @DestinationVariable Long roomId, @Valid ChatMessageSendReq request, Principal principal) {
-    chatMessageDeliveryService.sendMessage(roomId, principal.getName(), request);
+      @DestinationVariable Long roomId,
+      @Valid ChatMessageSendRequest request,
+      Principal principal) {
+    chatMessageDeliveryService.sendMessage(
+        roomId, principal.getName(), request.message(), request.clientMessageId());
   }
 }

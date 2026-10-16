@@ -1,4 +1,4 @@
-package com.catxi.chat.dto;
+package com.catxi.chat.service;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

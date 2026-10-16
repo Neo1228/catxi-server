@@ -2,7 +2,7 @@ package com.catxi.chat.service;
 
 import com.catxi.chat.domain.ChatRoom;
 import com.catxi.chat.domain.RoomStatus;
-import com.catxi.chat.dto.RoomDeletedEvent;
+import com.catxi.chat.event.RoomDeletedEvent;
 import com.catxi.chat.repository.ChatMessageRepository;
 import com.catxi.chat.repository.ChatRoomRepository;
 import java.time.LocalDateTime;
@@ -39,7 +39,7 @@ public class ChatRoomCleanupService {
         expiredRooms.stream().map(room -> new RoomDeletedEvent(room.getRoomId(), null)).toList();
     expiredRooms.stream()
         .filter(room -> room.getStatus() == RoomStatus.MATCHED)
-        .forEach(matchHistoryRecorder::recordForExpiredRoom);
+        .forEach(matchHistoryRecorder::recordMatchedRoom);
     int deletedMessages = chatMessageRepository.deleteByChatRoomIds(roomIds);
     chatRoomRepository.deleteAll(expiredRooms);
     deletionEvents.forEach(eventPublisher::publishEvent);

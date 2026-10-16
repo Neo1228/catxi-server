@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 
-public record RoomCreateReq(
+public record RoomCreateRequest(
     @NotNull Location startPoint,
     @NotNull Location endPoint,
     @NotNull @Min(1) @Max(4) Long recruitSize,

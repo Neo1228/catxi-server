@@ -4,33 +4,31 @@ import static com.catxi.chat.domain.QChatRoom.*;
 
 import com.catxi.chat.domain.ChatParticipant;
 import com.catxi.chat.domain.ChatRoom;
-import com.catxi.chat.domain.ChatRoomSummary;
 import com.catxi.chat.domain.KickedParticipant;
 import com.catxi.chat.domain.RoomStatus;
-import com.catxi.chat.dto.ChatParticipantKicked;
-import com.catxi.chat.dto.ChatRoomAccessRevoked;
-import com.catxi.chat.dto.ChatRoomInfoRes;
-import com.catxi.chat.dto.ChatRoomPageRes;
-import com.catxi.chat.dto.ChatRoomParticipantsUpdated;
-import com.catxi.chat.dto.ChatRoomRes;
-import com.catxi.chat.dto.ParticipantBrief;
-import com.catxi.chat.dto.RoomCreateReq;
-import com.catxi.chat.dto.RoomCreateRes;
-import com.catxi.chat.dto.RoomDeletedEvent;
+import com.catxi.chat.dto.ChatParticipantSummary;
 import com.catxi.chat.error.ChatParticipantErrorCode;
 import com.catxi.chat.error.ChatRoomErrorCode;
+import com.catxi.chat.event.ChatParticipantKicked;
+import com.catxi.chat.event.ChatRoomAccessRevoked;
+import com.catxi.chat.event.ChatRoomParticipantsUpdated;
+import com.catxi.chat.event.RoomDeletedEvent;
 import com.catxi.chat.repository.ChatMessageRepository;
 import com.catxi.chat.repository.ChatParticipantRepository;
 import com.catxi.chat.repository.ChatRoomRepository;
+import com.catxi.chat.repository.ChatRoomSummary;
 import com.catxi.chat.repository.KickedParticipantRepository;
 import com.catxi.common.api.exception.CatxiException;
 import com.catxi.common.domain.Location;
 import com.catxi.common.persistence.DatabaseConstraint;
-import com.catxi.member.domain.Member;
-import com.catxi.member.error.MemberErrorCode;
-import com.catxi.member.repository.MemberRepository;
+import com.catxi.member.service.MemberService;
+import com.catxi.member.service.MemberService.MemberChatProfile;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -47,9 +45,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ChatRoomService {
 
+  private static final Set<String> ROOM_SORT_FIELDS = Set.of("departAt", "createdTime");
+  private static final Set<String> ROOM_DIRECTIONS = Set.of("TO_SCHOOL", "FROM_SCHOOL");
+
   private final ChatRoomRepository chatRoomRepository;
   private final ChatParticipantRepository chatParticipantRepository;
-  private final MemberRepository memberRepository;
+  private final MemberService memberService;
   private final ChatMessageRepository chatMessageRepository;
   private final ApplicationEventPublisher applicationEventPublisher;
 
@@ -59,42 +60,49 @@ public class ChatRoomService {
   private final MatchHistoryRecorder matchHistoryRecorder;
 
   @Transactional
-  public RoomCreateRes createRoom(RoomCreateReq roomReq, String email) {
-    if (roomReq.startPoint() == null
-        || roomReq.endPoint() == null
-        || roomReq.departAt() == null
-        || roomReq.recruitSize() == null
-        || roomReq.recruitSize() < 1
-        || roomReq.recruitSize() > 4) {
+  public CreatedRoom createRoom(
+      Location startPoint,
+      Location endPoint,
+      LocalDateTime departAt,
+      Long recruitSize,
+      String email) {
+    if (startPoint == null
+        || endPoint == null
+        || departAt == null
+        || recruitSize == null
+        || recruitSize < 1
+        || recruitSize > 4) {
       throw new CatxiException(ChatRoomErrorCode.INVALID_CHATROOM_PARAMETER);
     }
-    if (roomReq.startPoint().equals(roomReq.endPoint())) {
+    if (startPoint.equals(endPoint)) {
       throw new CatxiException(ChatRoomErrorCode.INVALID_CHATROOM_PARAMETER);
     }
 
-    Member host =
-        memberRepository
-            .findByEmail(email)
-            .orElseThrow(() -> new CatxiException(MemberErrorCode.MEMBER_NOT_FOUND));
+    MemberChatProfile host = memberService.findChatProfileByEmail(email);
 
     ensureMemberIsNotInOtherRoom(host);
 
     ChatRoom room =
         ChatRoom.builder()
-            .host(host)
-            .startPoint(roomReq.startPoint())
-            .endPoint(roomReq.endPoint())
-            .departAt(roomReq.departAt())
+            .hostId(host.id())
+            .startPoint(startPoint)
+            .endPoint(endPoint)
+            .departAt(departAt)
             .status(RoomStatus.WAITING)
-            .maxCapacity(roomReq.recruitSize())
+            .maxCapacity(recruitSize)
             .build();
     chatRoomRepository.save(room);
 
     ChatParticipant hostPart =
-        ChatParticipant.builder().chatRoom(room).member(host).isHost(true).isReady(true).build();
+        ChatParticipant.builder()
+            .chatRoom(room)
+            .memberId(host.id())
+            .isHost(true)
+            .isReady(true)
+            .build();
     saveParticipant(hostPart);
 
-    return new RoomCreateRes(
+    return new CreatedRoom(
         room.getRoomId(),
         room.getStartPoint(),
         room.getEndPoint(),
@@ -104,9 +112,14 @@ public class ChatRoomService {
   }
 
   @Transactional(readOnly = true)
-  public ChatRoomPageRes getChatRoomPage(
+  public RoomPage getChatRoomPage(
       String direction, String station, String sort, Integer page, String requesterEmail) {
-    if (page == null || page < 0) {
+    if (page == null
+        || page < 0
+        || sort == null
+        || !ROOM_SORT_FIELDS.contains(sort)
+        || direction == null
+        || !ROOM_DIRECTIONS.contains(direction)) {
       throw new CatxiException(ChatRoomErrorCode.INVALID_CHATROOM_PARAMETER);
     }
     Pageable pageable = PageRequest.of(page, 10, Sort.by(sort));
@@ -119,21 +132,34 @@ public class ChatRoomService {
           default -> throw new CatxiException(ChatRoomErrorCode.INVALID_CHATROOM_PARAMETER);
         };
 
-    Page<ChatRoomRes> rooms =
-        chatRoomRepository
-            .findByLocationAndDirection(location, direction, pageable)
-            .map(this::toChatRoomResponse);
+    Page<ChatRoomSummary> summaries =
+        chatRoomRepository.findByLocationAndDirection(location, direction, pageable);
+    Map<Long, MemberChatProfile> hostProfiles =
+        memberService
+            .findChatProfilesByIds(
+                summaries.getContent().stream().map(ChatRoomSummary::hostId).distinct().toList())
+            .stream()
+            .collect(Collectors.toMap(MemberChatProfile::id, profile -> profile));
+    Page<RoomListItem> rooms =
+        summaries.map(summary -> toRoomListItem(summary, hostProfiles.get(summary.hostId())));
     Long myRoomId = findMyChatRoomId(requesterEmail).orElse(null);
-    return ChatRoomPageRes.of(rooms, myRoomId);
+    return new RoomPage(
+        myRoomId,
+        rooms.getContent(),
+        rooms.getTotalPages(),
+        rooms.getTotalElements(),
+        rooms.getNumber(),
+        rooms.getSize(),
+        rooms.hasNext());
   }
 
-  private ChatRoomRes toChatRoomResponse(ChatRoomSummary room) {
-    return new ChatRoomRes(
+  private RoomListItem toRoomListItem(ChatRoomSummary room, MemberChatProfile host) {
+    return new RoomListItem(
         room.roomId(),
         room.hostId(),
-        room.hostName(),
-        room.hostNickname(),
-        room.matchCount(),
+        host.memberName(),
+        host.nickname(),
+        host.matchCount(),
         room.startPoint(),
         room.endPoint(),
         room.recruitSize(),
@@ -154,28 +180,25 @@ public class ChatRoomService {
   }
 
   private void leaveChatRoom(Long roomId, String email, boolean hostOnly) {
-    Member member =
-        memberRepository
-            .findByEmail(email)
-            .orElseThrow(() -> new CatxiException(MemberErrorCode.MEMBER_NOT_FOUND));
+    MemberChatProfile member = memberService.findChatProfileByEmail(email);
     ChatRoom chatRoom =
         chatRoomRepository
             .findByIdForUpdate(roomId)
             .orElseThrow(() -> new CatxiException(ChatRoomErrorCode.CHATROOM_NOT_FOUND));
-    if (hostOnly && !chatRoom.getHost().equals(member)) {
+    if (hostOnly && !chatRoom.getHostId().equals(member.id())) {
       throw new CatxiException(ChatRoomErrorCode.NOT_HOST);
     }
     ChatParticipant chatParticipant =
         chatParticipantRepository
-            .findByChatRoomAndMember(chatRoom, member)
+            .findByChatRoomAndMemberId(chatRoom, member.id())
             .orElseThrow(() -> new CatxiException(ChatParticipantErrorCode.PARTICIPANT_NOT_FOUND));
     if (chatParticipant.isHost()) {
-      if (!chatRoom.getHost().equals(member)) {
+      if (!chatRoom.getHostId().equals(member.id())) {
         throw new CatxiException(ChatRoomErrorCode.NOT_HOST);
       }
       Long id = chatRoom.getRoomId();
-      var hostNickname = member.getNickname();
-      matchHistoryRecorder.recordForMatchedRoom(chatRoom);
+      var hostNickname = member.nickname();
+      matchHistoryRecorder.recordMatchedRoom(chatRoom);
 
       // 트랜잭션 커밋 후 Redis로 브로드캐스트되도록 이벤트 발행
       applicationEventPublisher.publishEvent(new RoomDeletedEvent(id, hostNickname));
@@ -185,12 +208,12 @@ public class ChatRoomService {
       return;
     }
 
-    applicationEventPublisher.publishEvent(new ChatRoomAccessRevoked(roomId, member.getId()));
+    applicationEventPublisher.publishEvent(new ChatRoomAccessRevoked(roomId, member.id()));
     chatParticipantRepository.delete(chatParticipant);
 
     sendParticipantUpdateMessage(chatRoom);
 
-    String systemMessage = member.getNickname() + " 님이 퇴장하셨습니다.";
+    String systemMessage = member.nickname() + " 님이 퇴장하셨습니다.";
     chatMessageService.sendSystemMessage(roomId, systemMessage);
   }
 
@@ -201,12 +224,9 @@ public class ChatRoomService {
             .findByIdForUpdate(roomId)
             .orElseThrow(() -> new CatxiException(ChatRoomErrorCode.CHATROOM_NOT_FOUND));
 
-    Member member =
-        memberRepository
-            .findByEmail(email)
-            .orElseThrow(() -> new CatxiException(MemberErrorCode.MEMBER_NOT_FOUND));
+    MemberChatProfile member = memberService.findChatProfileByEmail(email);
 
-    if (kickedParticipantRepository.existsByChatRoomAndMember(chatRoom, member)) {
+    if (kickedParticipantRepository.existsByChatRoomAndMemberId(chatRoom, member.id())) {
       throw new CatxiException(ChatParticipantErrorCode.BLOCKED_FROM_ROOM);
     }
 
@@ -220,13 +240,13 @@ public class ChatRoomService {
       throw new CatxiException(ChatRoomErrorCode.CHATROOM_FULL);
 
     ChatParticipant chatParticipant =
-        ChatParticipant.builder().chatRoom(chatRoom).member(member).build();
+        ChatParticipant.builder().chatRoom(chatRoom).memberId(member.id()).build();
 
     saveParticipant(chatParticipant);
 
     sendParticipantUpdateMessage(chatRoom);
 
-    chatMessageService.sendSystemMessage(roomId, member.getNickname() + " 님이 입장하셨습니다.");
+    chatMessageService.sendSystemMessage(roomId, member.nickname() + " 님이 입장하셨습니다.");
   }
 
   @Transactional(readOnly = true)
@@ -237,13 +257,10 @@ public class ChatRoomService {
 
   @Transactional(readOnly = true)
   public Optional<Long> findMyChatRoomId(String email) {
-    Member member =
-        memberRepository
-            .findByEmail(email)
-            .orElseThrow(() -> new CatxiException(MemberErrorCode.MEMBER_NOT_FOUND));
+    MemberChatProfile member = memberService.findChatProfileByEmail(email);
 
     return chatParticipantRepository
-        .findByMember(member)
+        .findByMemberId(member.id())
         .map(participant -> participant.getChatRoom().getRoomId());
   }
 
@@ -254,50 +271,42 @@ public class ChatRoomService {
             .findByIdForUpdate(roomId)
             .orElseThrow(() -> new CatxiException(ChatRoomErrorCode.CHATROOM_NOT_FOUND));
 
-    Member requester =
-        memberRepository
-            .findByEmail(requesterEmail)
-            .orElseThrow(() -> new CatxiException(MemberErrorCode.MEMBER_NOT_FOUND));
+    MemberChatProfile requester = memberService.findChatProfileByEmail(requesterEmail);
 
-    Member target =
-        memberRepository
-            .findByEmail(targetEmail)
-            .orElseThrow(() -> new CatxiException(MemberErrorCode.MEMBER_NOT_FOUND));
+    MemberChatProfile target = memberService.findChatProfileByEmail(targetEmail);
 
-    if (!room.getHost().equals(requester)) {
+    if (!room.getHostId().equals(requester.id())) {
       throw new CatxiException(ChatRoomErrorCode.NOT_HOST);
     }
-    if (requester.getId().equals(target.getId())) {
+    if (requester.id().equals(target.id())) {
       throw new CatxiException(ChatParticipantErrorCode.CANNOT_KICK_SELF);
     }
 
     ChatParticipant participant =
         chatParticipantRepository
-            .findByChatRoomAndMember(room, target)
+            .findByChatRoomAndMemberId(room, target.id())
             .orElseThrow(() -> new CatxiException(ChatParticipantErrorCode.PARTICIPANT_NOT_FOUND));
 
     log.debug(
-        "[강퇴 처리] roomId: {}, requesterId: {}, targetId: {}",
-        roomId,
-        requester.getId(),
-        target.getId());
+        "[강퇴 처리] roomId: {}, requesterId: {}, targetId: {}", roomId, requester.id(), target.id());
 
-    applicationEventPublisher.publishEvent(new ChatRoomAccessRevoked(roomId, target.getId()));
+    applicationEventPublisher.publishEvent(new ChatRoomAccessRevoked(roomId, target.id()));
     chatParticipantRepository.delete(participant);
 
-    KickedParticipant kicked = KickedParticipant.builder().chatRoom(room).member(target).build();
+    KickedParticipant kicked =
+        KickedParticipant.builder().chatRoom(room).memberId(target.id()).build();
     kickedParticipantRepository.save(kicked);
 
     sendParticipantUpdateMessage(room);
 
-    String msg = target.getNickname() + " 님이 강퇴되었습니다.";
+    String msg = target.nickname() + " 님이 강퇴되었습니다.";
     chatMessageService.sendSystemMessage(roomId, msg);
 
-    applicationEventPublisher.publishEvent(new ChatParticipantKicked(target.getEmail()));
+    applicationEventPublisher.publishEvent(new ChatParticipantKicked(target.email()));
   }
 
-  private void ensureMemberIsNotInOtherRoom(Member host) {
-    boolean exists = chatParticipantRepository.existsByMember(host);
+  private void ensureMemberIsNotInOtherRoom(MemberChatProfile host) {
+    boolean exists = chatParticipantRepository.existsByMemberId(host.id());
     if (exists) throw new CatxiException(ChatParticipantErrorCode.ALREADY_IN_ROOM);
   }
 
@@ -314,15 +323,12 @@ public class ChatRoomService {
 
   @Transactional(readOnly = true)
   public boolean isHost(Long roomId, String email) {
-    Member member =
-        memberRepository
-            .findByEmail(email)
-            .orElseThrow(() -> new CatxiException(MemberErrorCode.MEMBER_NOT_FOUND));
+    MemberChatProfile member = memberService.findChatProfileByEmail(email);
     ChatRoom chatRoom =
         chatRoomRepository
             .findById(roomId)
             .orElseThrow(() -> new CatxiException(ChatRoomErrorCode.CHATROOM_NOT_FOUND));
-    return chatRoom.getHost().equals(member);
+    return chatRoom.getHostId().equals(member.id());
   }
 
   @Transactional
@@ -331,11 +337,8 @@ public class ChatRoomService {
         chatRoomRepository
             .findByIdForShare(roomId)
             .orElseThrow(() -> new CatxiException(ChatRoomErrorCode.CHATROOM_NOT_FOUND));
-    Member member =
-        memberRepository
-            .findByEmail(email)
-            .orElseThrow(() -> new CatxiException(MemberErrorCode.MEMBER_NOT_FOUND));
-    return chatParticipantRepository.existsByChatRoomAndMember(chatRoom, member);
+    MemberChatProfile member = memberService.findChatProfileByEmail(email);
+    return chatParticipantRepository.existsByChatRoomAndMemberId(chatRoom, member.id());
   }
 
   @Transactional(readOnly = true)
@@ -344,11 +347,9 @@ public class ChatRoomService {
         chatRoomRepository
             .findById(roomId)
             .orElseThrow(() -> new CatxiException(ChatRoomErrorCode.CHATROOM_NOT_FOUND));
-    Member member =
-        memberRepository
-            .findByEmail(email)
-            .orElseThrow(() -> new CatxiException(MemberErrorCode.MEMBER_NOT_FOUND));
-    boolean isParticipant = chatParticipantRepository.existsByChatRoomAndMember(chatRoom, member);
+    MemberChatProfile member = memberService.findChatProfileByEmail(email);
+    boolean isParticipant =
+        chatParticipantRepository.existsByChatRoomAndMemberId(chatRoom, member.id());
     if (chatRoom.getStatus() == RoomStatus.READY_LOCKED && !isParticipant) {
       throw new CatxiException(ChatRoomErrorCode.CHATROOM_READY_LOCKED);
     }
@@ -358,7 +359,12 @@ public class ChatRoomService {
   }
 
   @Transactional(readOnly = true)
-  public ChatRoomInfoRes getChatRoomInfo(Long roomId, String email) {
+  public boolean hasParticipant(Long roomId, Long memberId) {
+    return chatParticipantRepository.existsByChatRoom_RoomIdAndMemberId(roomId, memberId);
+  }
+
+  @Transactional(readOnly = true)
+  public RoomDetails getChatRoomInfo(Long roomId, String email) {
     ChatRoom chatRoom =
         chatRoomRepository
             .findById(roomId)
@@ -370,23 +376,24 @@ public class ChatRoomService {
       throw new CatxiException(ChatParticipantErrorCode.PARTICIPANT_NOT_FOUND);
     }
 
-    List<ChatParticipantRepository.ChatParticipantSummary> participants =
-        chatParticipantRepository.findSummariesByChatRoom(chatRoom);
+    List<ChatParticipant> participants = chatParticipantRepository.findByChatRoom(chatRoom);
+    Map<Long, MemberChatProfile> profiles = findMemberProfiles(participants);
     List<String> participantEmails =
         participants.stream()
-            .map(ChatParticipantRepository.ChatParticipantSummary::getEmail)
+            .map(participant -> profiles.get(participant.getMemberId()).email())
             .toList();
     List<String> participantNicknames =
         participants.stream()
-            .map(ChatParticipantRepository.ChatParticipantSummary::getNickname)
+            .map(participant -> profiles.get(participant.getMemberId()).nickname())
             .toList();
+    MemberChatProfile host = memberService.findChatProfileById(chatRoom.getHostId());
 
-    return new ChatRoomInfoRes(
+    return new RoomDetails(
         (long) participantEmails.size(),
         chatRoom.getMaxCapacity(),
         chatRoom.getStatus(),
-        chatRoom.getHost().getEmail(),
-        chatRoom.getHost().getNickname(),
+        host.email(),
+        host.nickname(),
         participantEmails,
         participantNicknames,
         chatRoom.getStartPoint(),
@@ -395,13 +402,72 @@ public class ChatRoomService {
   }
 
   private void sendParticipantUpdateMessage(ChatRoom chatRoom) {
-    List<ParticipantBrief> participants =
-        chatParticipantRepository.findSummariesByChatRoom(chatRoom).stream()
+    List<ChatParticipant> chatParticipants = chatParticipantRepository.findByChatRoom(chatRoom);
+    Map<Long, MemberChatProfile> profiles = findMemberProfiles(chatParticipants);
+    List<ChatParticipantSummary> participants =
+        chatParticipants.stream()
             .map(
-                participant ->
-                    new ParticipantBrief(participant.getNickname(), participant.getEmail()))
+                participant -> {
+                  MemberChatProfile profile = profiles.get(participant.getMemberId());
+                  return new ChatParticipantSummary(profile.nickname(), profile.email());
+                })
             .toList();
     applicationEventPublisher.publishEvent(
         new ChatRoomParticipantsUpdated(chatRoom.getRoomId(), participants));
   }
+
+  private Map<Long, MemberChatProfile> findMemberProfiles(List<ChatParticipant> participants) {
+    return memberService
+        .findChatProfilesByIds(
+            participants.stream().map(ChatParticipant::getMemberId).distinct().toList())
+        .stream()
+        .collect(Collectors.toMap(MemberChatProfile::id, profile -> profile));
+  }
+
+  public record CreatedRoom(
+      Long roomId,
+      Location startPoint,
+      Location endPoint,
+      Long recruitSize,
+      LocalDateTime departAt,
+      RoomStatus status) {}
+
+  public record RoomListItem(
+      Long roomId,
+      Long hostId,
+      String hostName,
+      String hostNickname,
+      Integer matchCount,
+      Location startPoint,
+      Location endPoint,
+      Long recruitSize,
+      Long currentSize,
+      RoomStatus status,
+      LocalDateTime departAt,
+      LocalDateTime createdTime) {}
+
+  public record RoomPage(
+      Long myRoomId,
+      List<RoomListItem> rooms,
+      int totalPages,
+      long totalElements,
+      int currentPage,
+      int size,
+      boolean hasNext) {
+    public RoomPage {
+      rooms = List.copyOf(rooms);
+    }
+  }
+
+  public record RoomDetails(
+      Long currentSize,
+      Long recruitSize,
+      RoomStatus roomStatus,
+      String hostEmail,
+      String hostNickname,
+      List<String> participantEmails,
+      List<String> participantNicknames,
+      Location startPoint,
+      Location endPoint,
+      LocalDateTime departAt) {}
 }

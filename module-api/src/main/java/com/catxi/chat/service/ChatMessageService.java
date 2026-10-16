@@ -3,28 +3,26 @@ package com.catxi.chat.service;
 import com.catxi.chat.domain.ChatMessage;
 import com.catxi.chat.domain.ChatRoom;
 import com.catxi.chat.domain.MessageType;
-import com.catxi.chat.dto.ChatMessagePageRes;
-import com.catxi.chat.dto.ChatMessageRes;
-import com.catxi.chat.dto.ChatMessageSendReq;
-import com.catxi.chat.dto.ChatMessageSendResult;
-import com.catxi.chat.dto.ChatSystemMessageEvent;
 import com.catxi.chat.error.ChatMessageErrorCode;
 import com.catxi.chat.error.ChatParticipantErrorCode;
 import com.catxi.chat.error.ChatRoomErrorCode;
+import com.catxi.chat.event.ChatMessageNotificationRequested;
+import com.catxi.chat.event.ChatSystemMessageEvent;
 import com.catxi.chat.repository.ChatMessageRepository;
 import com.catxi.chat.repository.ChatParticipantRepository;
 import com.catxi.chat.repository.ChatRoomRepository;
 import com.catxi.common.api.error.CommonErrorCode;
 import com.catxi.common.api.exception.CatxiException;
-import com.catxi.member.domain.Member;
-import com.catxi.member.error.MemberErrorCode;
-import com.catxi.member.repository.MemberRepository;
-import com.catxi.notification.contract.FcmNotificationEvent;
-import com.catxi.notification.fcm.service.FcmOutboxService;
+import com.catxi.member.service.MemberService;
+import com.catxi.member.service.MemberService.MemberChatProfile;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -40,18 +38,19 @@ public class ChatMessageService {
   private static final int LEGACY_HISTORY_LIMIT = 100;
 
   private final ChatRoomRepository chatRoomRepository;
-  private final MemberRepository memberRepository;
+  private final MemberService memberService;
   private final ChatMessageRepository chatMessageRepository;
   private final ChatParticipantRepository chatParticipantRepository;
   private final ApplicationEventPublisher eventPublisher;
-  private final FcmOutboxService fcmOutboxService;
 
   @Transactional
   public ChatMessageSendResult saveMessage(
-      Long roomId, String senderEmail, ChatMessageSendReq req) {
-    if (req == null || !StringUtils.hasText(req.message()) || req.message().length() > 500) {
+      Long roomId, String senderEmail, String message, UUID clientMessageId) {
+    if (!StringUtils.hasText(message) || message.length() > 500) {
       throw new CatxiException(CommonErrorCode.INVALID_PARAMETER);
     }
+
+    MemberChatProfile sender = memberService.findChatProfileByEmail(senderEmail);
 
     // 방별 잠금으로 메시지 ID 발급과 커밋 순서를 맞춰 이력 재조회에서 늦은 커밋이 빠지지 않게 합니다.
     ChatRoom room =
@@ -59,23 +58,18 @@ public class ChatMessageService {
             .findByIdForUpdate(roomId)
             .orElseThrow(() -> new CatxiException(ChatRoomErrorCode.CHATROOM_NOT_FOUND));
 
-    Member sender =
-        memberRepository
-            .findByEmail(senderEmail)
-            .orElseThrow(() -> new CatxiException(MemberErrorCode.MEMBER_NOT_FOUND));
-
-    if (!chatParticipantRepository.existsByChatRoomAndMember(room, sender)) {
+    if (!chatParticipantRepository.existsByChatRoomAndMemberId(room, sender.id())) {
       log.warn("[메시지 전송 차단] 채팅방 비참여 사용자, roomId={}", roomId);
       throw new CatxiException(ChatParticipantErrorCode.PARTICIPANT_NOT_FOUND);
     }
 
-    if (req.clientMessageId() != null) {
+    if (clientMessageId != null) {
       ChatMessage existing =
           chatMessageRepository
-              .findByChatRoomAndMemberAndClientMessageId(room, sender, req.clientMessageId())
+              .findByChatRoomAndMemberIdAndClientMessageId(room, sender.id(), clientMessageId)
               .orElse(null);
       if (existing != null) {
-        if (!existing.getContent().equals(req.message())) {
+        if (!existing.getContent().equals(message)) {
           throw new CatxiException(ChatMessageErrorCode.IDEMPOTENCY_KEY_CONFLICT);
         }
         return new ChatMessageSendResult(
@@ -86,9 +80,9 @@ public class ChatMessageService {
     ChatMessage chatMsg =
         ChatMessage.builder()
             .chatRoom(room)
-            .member(sender)
-            .content(req.message())
-            .clientMessageId(req.clientMessageId())
+            .memberId(sender.id())
+            .content(message)
+            .clientMessageId(clientMessageId)
             .msgType(MessageType.CHAT)
             .build();
 
@@ -104,27 +98,25 @@ public class ChatMessageService {
 
   /** FCM 알림 처리 - Outbox 패턴 적용 MySQL 트랜잭션 내에서 fcm_outbox에 저장 */
   private void processChatFcmNotificationWithMessage(
-      ChatRoom room, Member sender, ChatMessage savedMessage) {
+      ChatRoom room, MemberChatProfile sender, ChatMessage savedMessage) {
     log.info("FCM Outbox 저장 시작: RoomId={}, MessageId={}", room.getRoomId(), savedMessage.getId());
 
     for (Long recipientId :
-        chatParticipantRepository.findRecipientMemberIdsByChatRoom(room, sender.getId())) {
-      saveChatNotificationToOutbox(recipientId, room.getRoomId(), savedMessage.getId());
+        chatParticipantRepository.findRecipientMemberIdsByChatRoom(room, sender.id())) {
+      publishChatNotificationRequested(recipientId, room.getRoomId(), savedMessage.getId());
     }
 
     log.info("FCM Outbox 저장 완료: RoomId={}, MessageId={}", room.getRoomId(), savedMessage.getId());
   }
 
   /** 채팅 알림을 Outbox에 저장 */
-  private void saveChatNotificationToOutbox(Long targetMemberId, Long roomId, Long messageId) {
-    FcmNotificationEvent event =
-        FcmNotificationEvent.createChatMessage(targetMemberId, roomId, messageId);
-    fcmOutboxService.enqueue(event);
-    log.debug("FCM Outbox 저장: EventId={}, Target={}", event.eventId(), targetMemberId);
+  private void publishChatNotificationRequested(Long targetMemberId, Long roomId, Long messageId) {
+    eventPublisher.publishEvent(
+        new ChatMessageNotificationRequested(targetMemberId, roomId, messageId));
   }
 
   @Transactional(readOnly = true)
-  public List<ChatMessageRes> getChatHistory(Long roomId, String email) {
+  public List<MessageView> getChatHistory(Long roomId, String email) {
 
     ChatRoom room = requireParticipantRoom(roomId, email);
     List<ChatMessage> messages =
@@ -134,11 +126,11 @@ public class ChatMessageService {
       throw new CatxiException(ChatRoomErrorCode.CHAT_HISTORY_PAGINATION_REQUIRED);
     }
 
-    return messages.stream().map(message -> toResponse(room, message)).toList();
+    return toResponses(room, messages);
   }
 
   @Transactional(readOnly = true)
-  public ChatMessagePageRes getChatHistoryPage(
+  public MessagePage getChatHistoryPage(
       Long roomId,
       String email,
       LocalDateTime beforeCreatedAt,
@@ -173,37 +165,48 @@ public class ChatMessageService {
       Collections.reverse(page);
     }
 
-    List<ChatMessageRes> messages =
-        page.stream().map(message -> toResponse(room, message)).toList();
-    ChatMessageRes cursor = hasMore ? messages.get(forward ? messages.size() - 1 : 0) : null;
+    List<MessageView> messages = toResponses(room, page);
+    MessageView cursor = hasMore ? messages.get(forward ? messages.size() - 1 : 0) : null;
     LocalDateTime nextCreatedAt = cursor != null ? cursor.sentAt() : null;
     Long nextMessageId = cursor != null ? cursor.messageId() : null;
-    return new ChatMessagePageRes(messages, nextCreatedAt, nextMessageId, hasMore);
+    return new MessagePage(messages, nextCreatedAt, nextMessageId, hasMore);
   }
 
   private ChatRoom requireParticipantRoom(Long roomId, String email) {
-    Member member =
-        memberRepository
-            .findByEmail(email)
-            .orElseThrow(() -> new CatxiException(MemberErrorCode.MEMBER_NOT_FOUND));
+    MemberChatProfile member = memberService.findChatProfileByEmail(email);
     ChatRoom room =
         chatRoomRepository
             .findById(roomId)
             .orElseThrow(() -> new CatxiException(ChatRoomErrorCode.CHATROOM_NOT_FOUND));
-    if (!chatParticipantRepository.existsByChatRoomAndMember(room, member)) {
+    if (!chatParticipantRepository.existsByChatRoomAndMemberId(room, member.id())) {
       throw new CatxiException(ChatParticipantErrorCode.PARTICIPANT_NOT_FOUND);
     }
     return room;
   }
 
-  private ChatMessageRes toResponse(ChatRoom room, ChatMessage message) {
-    Member sender = message.getMember();
-    return new ChatMessageRes(
-        sender != null ? sender.getEmail() : "[SYSTEM]",
+  private List<MessageView> toResponses(ChatRoom room, List<ChatMessage> messages) {
+    Map<Long, MemberChatProfile> profiles =
+        memberService
+            .findChatProfilesByIds(
+                messages.stream()
+                    .map(ChatMessage::getMemberId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList())
+            .stream()
+            .collect(Collectors.toMap(MemberChatProfile::id, profile -> profile));
+    return messages.stream()
+        .map(message -> toResponse(room, message, profiles.get(message.getMemberId())))
+        .toList();
+  }
+
+  private MessageView toResponse(ChatRoom room, ChatMessage message, MemberChatProfile sender) {
+    return new MessageView(
+        sender != null ? sender.email() : "[SYSTEM]",
         message.getId(),
         room.getRoomId(),
-        sender != null ? sender.getId() : null,
-        sender != null ? sender.getNickname() : "[SYSTEM]",
+        sender != null ? sender.id() : null,
+        sender != null ? sender.nickname() : "[SYSTEM]",
         message.getContent(),
         message.getCreatedTime());
   }
@@ -219,7 +222,7 @@ public class ChatMessageService {
     ChatMessage systemMsg =
         ChatMessage.builder()
             .chatRoom(chatRoom)
-            .member(null)
+            .memberId(null)
             .content(content)
             .msgType(MessageType.SYSTEM)
             .build();
@@ -229,5 +232,24 @@ public class ChatMessageService {
     eventPublisher.publishEvent(
         new ChatSystemMessageEvent(
             roomId, savedMessage.getId(), content, savedMessage.getCreatedTime()));
+  }
+
+  public record MessageView(
+      String senderEmail,
+      Long messageId,
+      Long roomId,
+      Long senderId,
+      String senderName,
+      String content,
+      LocalDateTime sentAt) {}
+
+  public record MessagePage(
+      List<MessageView> messages,
+      LocalDateTime nextCreatedAt,
+      Long nextMessageId,
+      boolean hasMore) {
+    public MessagePage {
+      messages = List.copyOf(messages);
+    }
   }
 }
