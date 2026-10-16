@@ -1,11 +1,11 @@
 package com.catxi.auth.jwt;
 
 import com.catxi.auth.config.AuthMode;
-import com.catxi.auth.infra.CookieUtil;
 import com.catxi.auth.infra.TokenBlacklistRepository;
 import com.catxi.auth.security.CustomUserDetails;
 import com.catxi.auth.service.TokenService;
 import com.catxi.common.api.ApiResponse;
+import com.catxi.common.api.cookie.RefreshTokenCookie;
 import com.catxi.common.api.error.CommonErrorCode;
 import com.catxi.common.api.error.ErrorCode;
 import com.catxi.common.api.exception.CatxiException;
@@ -91,7 +91,7 @@ public class JwtFilter extends OncePerRequestFilter {
           setAuthentication(refreshedToken.member());
           response.setHeader(
               "Set-Cookie",
-              CookieUtil.createCookie(
+              RefreshTokenCookie.createCookie(
                       refreshedToken.tokens().refreshToken(),
                       refreshedToken.tokens().refreshTokenTtl())
                   .toString());

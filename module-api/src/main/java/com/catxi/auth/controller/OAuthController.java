@@ -1,12 +1,12 @@
 package com.catxi.auth.controller;
 
-import com.catxi.auth.infra.CookieUtil;
 import com.catxi.auth.kakao.KakaoDTO;
 import com.catxi.auth.kakao.TokenDTO;
 import com.catxi.auth.security.CustomUserDetails;
 import com.catxi.auth.service.OAuthLoginService;
 import com.catxi.auth.service.TokenService;
 import com.catxi.common.api.ApiResponse;
+import com.catxi.common.api.cookie.RefreshTokenCookie;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -47,7 +47,8 @@ public class OAuthController {
     response.setHeader("access", result.tokens().accessToken());
     response.setHeader(
         HttpHeaders.SET_COOKIE,
-        CookieUtil.createCookie(result.tokens().refreshToken(), result.tokens().refreshTokenTtl())
+        RefreshTokenCookie.createCookie(
+                result.tokens().refreshToken(), result.tokens().refreshTokenTtl())
             .toString());
     response.setHeader("isNewUser", Boolean.toString(result.newUser()));
     return ApiResponse.success(result.newUser() ? "isNewUser" : "로그인 성공");
@@ -81,7 +82,7 @@ public class OAuthController {
     TokenService.ReissueResult result = tokenService.reissueAccessToken(refreshToken);
     response.setHeader(
         HttpHeaders.SET_COOKIE,
-        CookieUtil.createCookie(result.tokens().refreshToken(), result.refreshTokenTtl())
+        RefreshTokenCookie.createCookie(result.tokens().refreshToken(), result.refreshTokenTtl())
             .toString());
     return ApiResponse.success(result.tokens());
   }
@@ -100,7 +101,7 @@ public class OAuthController {
             ? authorization.substring("Bearer ".length())
             : null;
     tokenService.logout(accessToken, refreshToken);
-    response.addHeader(HttpHeaders.SET_COOKIE, CookieUtil.deleteCookie().toString());
+    response.addHeader(HttpHeaders.SET_COOKIE, RefreshTokenCookie.deleteCookie().toString());
     return ApiResponse.success("로그아웃 완료");
   }
 

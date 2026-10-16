@@ -2,9 +2,9 @@ package com.catxi.member.controller;
 
 import com.catxi.auth.dto.AuthDTO.LoginRequest;
 import com.catxi.auth.dto.AuthDTO.LoginResponse;
-import com.catxi.auth.infra.CookieUtil;
 import com.catxi.auth.service.TokenService;
 import com.catxi.common.api.ApiResponse;
+import com.catxi.common.api.cookie.RefreshTokenCookie;
 import com.catxi.member.dto.IdResponse;
 import com.catxi.member.dto.MatchHistoryRes;
 import com.catxi.member.dto.MemberProfileRes;
@@ -57,7 +57,8 @@ public class MemberController {
         tokenService.loginWithPassword(request.email(), request.password());
     response.addHeader(
         HttpHeaders.SET_COOKIE,
-        CookieUtil.createCookie(tokens.refreshToken(), tokens.refreshTokenTtl()).toString());
+        RefreshTokenCookie.createCookie(tokens.refreshToken(), tokens.refreshTokenTtl())
+            .toString());
     return ResponseEntity.ok(new LoginResponse(tokens.accessToken()));
   }
 
