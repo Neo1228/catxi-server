@@ -5,7 +5,7 @@ x-database-redis-environment: &database-redis-environment
   DB_PORT: ${DB_PORT:-3306}
   REDIS_HOST: ${REDIS_HOST:?Set REDIS_HOST}
   REDIS_PORT: ${REDIS_PORT:-6379}
-  REDIS_SSL_ENABLED: ${REDIS_SSL_ENABLED:-false}
+  REDIS_SSL_ENABLED: ${REDIS_SSL_ENABLED:?Set REDIS_SSL_ENABLED}
 
 x-default-logging: &default-logging
   driver: json-file
@@ -55,8 +55,6 @@ services:
       - no-new-privileges:true
 
   worker:
-    profiles:
-      - worker
     image: ${WORKER_IMAGE:?Set WORKER_IMAGE to an immutable image tag}
     restart: unless-stopped
     stop_grace_period: 180s
@@ -82,7 +80,12 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - catxi-worker-logs:/app/logs
-      - "${FCM_SERVICE_ACCOUNT_HOST_DIRECTORY:-/etc/catxi/secrets}:/run/catxi-secrets:ro,z"
+      - type: bind
+        source: ${FCM_SERVICE_ACCOUNT_HOST_FILE:?Set FCM_SERVICE_ACCOUNT_HOST_FILE}
+        target: /run/catxi-secrets/fcm-service-account.json
+        read_only: true
+        bind:
+          create_host_path: false
     networks:
       - catxi-network
     mem_limit: 768m

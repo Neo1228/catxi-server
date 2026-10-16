@@ -5,13 +5,11 @@ COPY gradlew settings.gradle build.gradle ./
 COPY gradle gradle
 COPY module-api/build.gradle module-api/build.gradle
 COPY module-worker/build.gradle module-worker/build.gradle
-COPY module-contract/build.gradle module-contract/build.gradle
 COPY gradle/libs.versions.toml gradle/libs.versions.toml
 RUN chmod +x gradlew
 
 COPY module-api/src module-api/src
 COPY module-worker/src module-worker/src
-COPY module-contract/src module-contract/src
 
 FROM source AS api-build
 RUN ./gradlew :module-api:bootJar --no-daemon
