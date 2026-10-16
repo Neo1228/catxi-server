@@ -1,6 +1,8 @@
 package com.catxi.chat.realtime;
 
-import com.catxi.chat.dto.ChatMessageBroadcast;
+import com.catxi.chat.realtime.dto.ChatMessageBroadcast;
+import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -19,6 +21,19 @@ public class ChatMessagePublisher {
   private final @Qualifier("chatPubSub") StringRedisTemplate redisTemplate;
   private final ObjectMapper objectMapper;
   private final SimpMessagingTemplate messageTemplate;
+
+  public void deliver(
+      Long roomId,
+      String senderEmail,
+      String content,
+      LocalDateTime sentAt,
+      Long messageId,
+      UUID clientMessageId) {
+    ChatMessageBroadcast message =
+        new ChatMessageBroadcast(roomId, senderEmail, content, sentAt, messageId, clientMessageId);
+    acknowledge(senderEmail, roomId, message);
+    publish(roomId, message);
+  }
 
   public void publish(Long roomId, ChatMessageBroadcast message) {
     try {

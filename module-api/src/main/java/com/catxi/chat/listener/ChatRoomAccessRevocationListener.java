@@ -1,6 +1,6 @@
 package com.catxi.chat.listener;
 
-import com.catxi.chat.dto.ChatRoomAccessRevoked;
+import com.catxi.chat.event.ChatRoomAccessRevoked;
 import com.catxi.chat.websocket.StompSubscriptionRevoker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

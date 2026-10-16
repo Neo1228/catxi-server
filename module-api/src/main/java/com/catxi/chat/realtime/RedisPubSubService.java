@@ -1,11 +1,11 @@
 package com.catxi.chat.realtime;
 
-import com.catxi.chat.dto.ChatCoordinateBroadcast;
-import com.catxi.chat.dto.ChatMessageBroadcast;
-import com.catxi.chat.dto.ChatRoomAccessRevoked;
-import com.catxi.chat.dto.ParticipantsUpdateMessage;
-import com.catxi.chat.dto.ReadyMessageRes;
-import com.catxi.chat.dto.RoomEventMessage;
+import com.catxi.chat.event.ChatRoomAccessRevoked;
+import com.catxi.chat.realtime.dto.ChatCoordinateBroadcast;
+import com.catxi.chat.realtime.dto.ChatMessageBroadcast;
+import com.catxi.chat.realtime.dto.ParticipantsUpdateMessage;
+import com.catxi.chat.realtime.dto.ReadyMessageResponse;
+import com.catxi.chat.realtime.dto.RoomEventMessage;
 import com.catxi.chat.websocket.StompSubscriptionRevoker;
 import java.nio.charset.StandardCharsets;
 import lombok.extern.slf4j.Slf4j;
@@ -49,7 +49,8 @@ public class RedisPubSubService implements MessageListener {
             objectMapper.readValue(payload, ChatCoordinateBroadcast.class);
         messageTemplate.convertAndSend("/topic/map/" + coordinateRes.roomId(), coordinateRes);
       } else if (channel.startsWith("ready:")) {
-        ReadyMessageRes readyMessage = objectMapper.readValue(payload, ReadyMessageRes.class);
+        ReadyMessageResponse readyMessage =
+            objectMapper.readValue(payload, ReadyMessageResponse.class);
         messageTemplate.convertAndSend("/topic/ready/" + readyMessage.roomId(), readyMessage);
       } else if (channel.startsWith("participants:")) {
         ParticipantsUpdateMessage update =

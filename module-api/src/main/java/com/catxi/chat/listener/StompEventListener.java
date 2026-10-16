@@ -1,7 +1,7 @@
 package com.catxi.chat.listener;
 
+import com.catxi.chat.realtime.ChatPresenceService;
 import com.catxi.chat.websocket.RoomSubscriptionRegistry;
-import com.catxi.notification.fcm.service.FcmActiveStatusService;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -24,7 +24,7 @@ import org.springframework.web.socket.messaging.SessionUnsubscribeEvent;
 public class StompEventListener {
   private final Set<String> sessions = ConcurrentHashMap.newKeySet();
   private final Map<String, SessionPresence> sessionPresence = new ConcurrentHashMap<>();
-  private final FcmActiveStatusService fcmActiveStatusService;
+  private final ChatPresenceService chatPresenceService;
   private final RoomSubscriptionRegistry roomSubscriptionRegistry;
 
   @EventListener
@@ -145,10 +145,9 @@ public class StompEventListener {
     Long memberId = presence.memberId();
     if (memberId == null) {
       presence.setMemberId(
-          fcmActiveStatusService.updateSessionActiveStatus(
-              presence.email(), roomId, sessionId, true));
+          chatPresenceService.updateSessionActiveStatus(presence.email(), roomId, sessionId, true));
     } else {
-      fcmActiveStatusService.updateSessionActiveStatus(memberId, roomId, sessionId, true);
+      chatPresenceService.updateSessionActiveStatus(memberId, roomId, sessionId, true);
     }
   }
 
@@ -158,9 +157,9 @@ public class StompEventListener {
     }
     Long memberId = presence.memberId();
     if (memberId == null) {
-      fcmActiveStatusService.updateSessionActiveStatus(presence.email(), roomId, sessionId, false);
+      chatPresenceService.updateSessionActiveStatus(presence.email(), roomId, sessionId, false);
     } else {
-      fcmActiveStatusService.updateSessionActiveStatus(memberId, roomId, sessionId, false);
+      chatPresenceService.updateSessionActiveStatus(memberId, roomId, sessionId, false);
     }
   }
 

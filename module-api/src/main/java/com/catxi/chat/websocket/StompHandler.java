@@ -1,13 +1,12 @@
 package com.catxi.chat.websocket;
 
-import com.catxi.auth.jwt.JwtUtil;
+import com.catxi.auth.error.AuthErrorCode;
+import com.catxi.auth.jwt.JwtTokenParser;
 import com.catxi.auth.service.BlacklistService;
 import com.catxi.chat.service.ChatRoomService;
 import com.catxi.common.api.exception.CatxiException;
-import com.catxi.member.domain.Member;
 import com.catxi.member.domain.MemberStatus;
-import com.catxi.member.error.MemberErrorCode;
-import com.catxi.member.repository.MemberRepository;
+import com.catxi.member.service.MemberService;
 import io.jsonwebtoken.Claims;
 import java.util.Collections;
 import lombok.RequiredArgsConstructor;
@@ -27,9 +26,9 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class StompHandler implements ChannelInterceptor {
 
-  private final JwtUtil jwtUtil;
+  private final JwtTokenParser jwtTokenParser;
   private final ChatRoomService chatRoomService;
-  private final MemberRepository memberRepository;
+  private final MemberService memberService;
   private final BlacklistService blacklistService;
   private final RoomSubscriptionRegistry roomSubscriptions;
 
@@ -44,23 +43,20 @@ public class StompHandler implements ChannelInterceptor {
       String token = extractToken(accessor);
       Claims claims;
       try {
-        claims = jwtUtil.parseJwt(token);
+        claims = jwtTokenParser.parseJwt(token);
       } catch (Exception e) {
-        throw new CatxiException(MemberErrorCode.ACCESS_EXPIRED);
+        throw new CatxiException(AuthErrorCode.ACCESS_EXPIRED);
       }
 
-      if (!"access".equals(jwtUtil.getType(claims))) {
-        throw new CatxiException(MemberErrorCode.INVALID_TOKEN);
+      if (!"access".equals(jwtTokenParser.getType(claims))) {
+        throw new CatxiException(AuthErrorCode.INVALID_TOKEN);
       }
       if (blacklistService.isTokenBlacklisted(token)) {
-        throw new CatxiException(MemberErrorCode.ACCESS_FORBIDDEN);
+        throw new CatxiException(AuthErrorCode.ACCESS_FORBIDDEN);
       }
 
-      String email = jwtUtil.getEmail(claims);
-      Member member =
-          memberRepository
-              .findByEmail(email)
-              .orElseThrow(() -> new CatxiException(MemberErrorCode.MEMBER_NOT_FOUND));
+      String email = jwtTokenParser.getEmail(claims);
+      MemberService.MemberAccount member = memberService.findAccountByEmail(email);
       validateMember(member);
       accessor.setUser(
           new UsernamePasswordAuthenticationToken(email, token, Collections.emptyList()));
@@ -75,7 +71,7 @@ public class StompHandler implements ChannelInterceptor {
     }
 
     if (StompCommand.SUBSCRIBE == accessor.getCommand()) {
-      Member member = validateSession(accessor);
+      MemberService.MemberAccount member = validateSession(accessor);
       String destination = accessor.getDestination();
       if (destination == null) {
         throw new AuthenticationServiceException("destination 누락");
@@ -97,7 +93,7 @@ public class StompHandler implements ChannelInterceptor {
 
       RoomSubscriptionRegistry.Revisions revisions;
       try {
-        revisions = roomSubscriptions.captureRevisions(roomId, member.getId());
+        revisions = roomSubscriptions.captureRevisions(roomId, member.id());
       } catch (RuntimeException exception) {
         throw new AuthenticationServiceException("채팅방 권한을 확인할 수 없습니다", exception);
       }
@@ -107,7 +103,7 @@ public class StompHandler implements ChannelInterceptor {
         throw new AuthenticationServiceException("해당 room에 권한이 없습니다");
       }
       roomSubscriptions.register(
-          accessor.getSessionId(), accessor.getSubscriptionId(), roomId, member.getId(), revisions);
+          accessor.getSessionId(), accessor.getSubscriptionId(), roomId, member.id(), revisions);
     }
 
     return message;
@@ -175,26 +171,23 @@ public class StompHandler implements ChannelInterceptor {
     }
   }
 
-  private void validateMember(Member member) {
-    if (member.getStatus() == MemberStatus.INACTIVE
-        || blacklistService.isUserBlacklisted(member.getId())) {
-      throw new CatxiException(MemberErrorCode.ACCESS_FORBIDDEN);
+  private void validateMember(MemberService.MemberAccount member) {
+    if (member.status() == MemberStatus.INACTIVE
+        || blacklistService.isUserBlacklisted(member.id())) {
+      throw new CatxiException(AuthErrorCode.ACCESS_FORBIDDEN);
     }
   }
 
-  private Member validateSession(StompHeaderAccessor accessor) {
+  private MemberService.MemberAccount validateSession(StompHeaderAccessor accessor) {
     String email = resolveEmail(accessor);
     if (!(accessor.getUser() instanceof Authentication authentication)) {
-      throw new CatxiException(MemberErrorCode.ACCESS_FORBIDDEN);
+      throw new CatxiException(AuthErrorCode.ACCESS_FORBIDDEN);
     }
     Object credentials = authentication.getCredentials();
     if (!(credentials instanceof String token) || blacklistService.isTokenBlacklisted(token)) {
-      throw new CatxiException(MemberErrorCode.ACCESS_FORBIDDEN);
+      throw new CatxiException(AuthErrorCode.ACCESS_FORBIDDEN);
     }
-    Member member =
-        memberRepository
-            .findByEmail(email)
-            .orElseThrow(() -> new CatxiException(MemberErrorCode.MEMBER_NOT_FOUND));
+    MemberService.MemberAccount member = memberService.findAccountByEmail(email);
     validateMember(member);
     return member;
   }

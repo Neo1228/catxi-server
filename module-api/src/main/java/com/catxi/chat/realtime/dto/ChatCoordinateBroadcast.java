@@ -1,4 +1,4 @@
-package com.catxi.chat.dto;
+package com.catxi.chat.realtime.dto;
 
 public record ChatCoordinateBroadcast(
     Long roomId,

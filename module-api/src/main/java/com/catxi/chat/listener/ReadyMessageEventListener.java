@@ -1,6 +1,7 @@
 package com.catxi.chat.listener;
 
-import com.catxi.chat.dto.ReadyMessageEvent;
+import com.catxi.chat.event.ReadyMessageEvent;
+import com.catxi.chat.realtime.dto.ReadyMessageResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -21,10 +22,25 @@ public class ReadyMessageEventListener {
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onReadyMessageEvent(ReadyMessageEvent event) {
     try {
-      String json = objectMapper.writeValueAsString(event.readyMessageRes());
-      redisTemplate.convertAndSend(event.channel(), json);
+      String channel = "ready:" + event.roomId();
+      String json = objectMapper.writeValueAsString(toResponse(event));
+      redisTemplate.convertAndSend(channel, json);
     } catch (Exception e) {
-      log.warn("준비 상태 실시간 알림 발행에 실패했습니다: channel={}", event.channel(), e);
+      log.warn("준비 상태 실시간 알림 발행에 실패했습니다: roomId={}", event.roomId(), e);
     }
+  }
+
+  private ReadyMessageResponse toResponse(ReadyMessageEvent event) {
+    return switch (event.type()) {
+      case READY_REQUEST ->
+          ReadyMessageResponse.readyRequest(
+              event.roomId(), event.senderId(), event.senderEmail(), event.senderName());
+      case READY_ACCEPT ->
+          ReadyMessageResponse.readyAccept(
+              event.roomId(), event.senderId(), event.senderEmail(), event.senderName());
+      case READY_DENY ->
+          ReadyMessageResponse.readyDeny(
+              event.roomId(), event.senderId(), event.senderEmail(), event.senderName());
+    };
   }
 }
