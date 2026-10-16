@@ -1,4 +1,4 @@
-package com.catxi.common.config;
+package com.catxi.api.config;
 
 import java.util.Arrays;
 import java.util.List;

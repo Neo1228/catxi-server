@@ -1,6 +1,6 @@
 package com.catxi.api.config.security;
 
-import com.catxi.common.config.CorsProperties;
+import com.catxi.api.config.CorsProperties;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

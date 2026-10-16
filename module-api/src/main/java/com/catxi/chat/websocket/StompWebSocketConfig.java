@@ -1,6 +1,6 @@
 package com.catxi.chat.websocket;
 
-import com.catxi.common.config.CorsProperties;
+import com.catxi.api.config.CorsProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
