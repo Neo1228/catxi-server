@@ -10,7 +10,7 @@ import lombok.Setter;
 
 @Setter
 @Getter
-public class SignUpDTO {
+public class SignUpRequest {
 
   @NotBlank
   @Email

@@ -1,18 +1,24 @@
 package com.catxi.member.domain;
 
-import com.catxi.common.domain.BaseTimeEntity;
+import com.catxi.common.persistence.BaseTimeEntity;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
 @Entity
-@Table(uniqueConstraints = @UniqueConstraint(name = "uk_member_email", columnNames = "email"))
+@DynamicUpdate
+@Table(
+    uniqueConstraints = {
+      @UniqueConstraint(name = "uk_member_email", columnNames = "email"),
+      @UniqueConstraint(name = "uk_member_fcm_fid", columnNames = "fcm_fid")
+    })
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -61,11 +67,18 @@ public class Member extends BaseTimeEntity {
   private MemberStatus status;
 
   // FCM 토큰
+  // 워커가 별도 프로세스에서 토큰을 정리하므로 다른 회원 필드 저장이 값을 덮지 않게 합니다.
   @Column(name = "fcm_token", columnDefinition = "TEXT")
   private String fcmToken;
 
   @Column(name = "fcm_token_updated_at")
   private LocalDateTime fcmTokenUpdatedAt;
+
+  @Column(name = "fcm_fid", length = 255)
+  private String fcmFid;
+
+  @Column(name = "fcm_fid_updated_at")
+  private LocalDateTime fcmFidUpdatedAt;
 
   // 로그인했음 표시
   public void setLogin(boolean isLogin) {
@@ -79,7 +92,24 @@ public class Member extends BaseTimeEntity {
 
   // FCM 토큰 업데이트
   public void updateFcmToken(String token) {
+    if (fcmFid != null && token != null) {
+      return;
+    }
     this.fcmToken = token;
     this.fcmTokenUpdatedAt = LocalDateTime.now();
+  }
+
+  public void updateFcmFid(String fid) {
+    this.fcmFid = fid;
+    this.fcmFidUpdatedAt = LocalDateTime.now();
+    this.fcmToken = null;
+    this.fcmTokenUpdatedAt = null;
+  }
+
+  public void clearFcmRegistration() {
+    this.fcmToken = null;
+    this.fcmTokenUpdatedAt = null;
+    this.fcmFid = null;
+    this.fcmFidUpdatedAt = null;
   }
 }

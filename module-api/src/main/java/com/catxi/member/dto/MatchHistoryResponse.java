@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDateTime;
 import java.util.List;
 
-public record MatchHistoryRes(
+public record MatchHistoryResponse(
     Long historyId,
     LocalDateTime matchedAt,
     String startPoint,

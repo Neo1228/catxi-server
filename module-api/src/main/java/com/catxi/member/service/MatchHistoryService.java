@@ -1,19 +1,22 @@
 package com.catxi.member.service;
 
 import com.catxi.common.api.exception.CatxiException;
-import com.catxi.member.converter.MemberConverter;
+import com.catxi.common.domain.Location;
 import com.catxi.member.domain.MatchHistory;
 import com.catxi.member.domain.Member;
-import com.catxi.member.dto.MatchHistoryRes;
 import com.catxi.member.error.MemberErrorCode;
 import com.catxi.member.repository.MatchHistoryRepository;
 import com.catxi.member.repository.MemberRepository;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -26,7 +29,39 @@ public class MatchHistoryService {
   private final MatchHistoryRepository matchHistoryRepository;
   private final MemberRepository memberRepository;
 
-  public MatchHistoryRes getHistoryById(Long historyId, String email) {
+  @Transactional(propagation = Propagation.MANDATORY)
+  public void recordMatchedRoom(
+      Long roomId,
+      Location startPoint,
+      Location endPoint,
+      LocalDateTime matchedAt,
+      List<MatchParticipant> participants) {
+    if (participants.isEmpty()) {
+      return;
+    }
+
+    List<String> participantNames = participants.stream().map(MatchParticipant::nickname).toList();
+    LocalDateTime createdAt = LocalDateTime.now();
+
+    for (MatchParticipant participant : participants) {
+      if (matchHistoryRepository.existsByRoomIdAndUser_Id(roomId, participant.memberId())) {
+        continue;
+      }
+      matchHistoryRepository.save(
+          MatchHistory.builder()
+              .roomId(roomId)
+              .user(memberRepository.getReferenceById(participant.memberId()))
+              .startPoint(startPoint)
+              .endPoint(endPoint)
+              .participants(participantNames)
+              .createdAt(createdAt)
+              .matchedAt(matchedAt)
+              .build());
+      memberRepository.incrementMatchCount(participant.memberId());
+    }
+  }
+
+  public MatchHistoryView getHistoryById(Long historyId, String email) {
     Member user =
         memberRepository
             .findByEmail(email)
@@ -40,10 +75,10 @@ public class MatchHistoryService {
     if (!history.getUser().equals(user)) {
       throw new CatxiException(MemberErrorCode.MATCH_HISTORY_FORBIDDEN);
     }
-    return MemberConverter.toMatchHistoryResponse(history, user.getMemberName());
+    return toView(history, user.getMemberName());
   }
 
-  public Slice<MatchHistoryRes> getScrollHistory(String email, Pageable pageable) {
+  public Slice<MatchHistoryView> getScrollHistory(String email, Pageable pageable) {
     Member user =
         memberRepository
             .findByEmail(email)
@@ -60,6 +95,39 @@ public class MatchHistoryService {
     Slice<MatchHistory> histories =
         matchHistoryRepository.findHistoriesByUserOrParticipant(email, memberName, boundedPageable);
 
-    return histories.map(history -> MemberConverter.toMatchHistoryResponse(history, memberName));
+    return histories.map(history -> toView(history, memberName));
   }
+
+  private MatchHistoryView toView(MatchHistory history, String memberName) {
+    List<String> maskedParticipants =
+        history.getParticipants().stream()
+            .filter(name -> !Objects.equals(name, memberName))
+            .map(MatchHistoryService::maskName)
+            .toList();
+    return new MatchHistoryView(
+        history.getId(),
+        history.getMatchedAt(),
+        history.getStartPoint().name(),
+        history.getEndPoint().name(),
+        maskedParticipants);
+  }
+
+  private static String maskName(String name) {
+    if (name == null || name.isBlank()) {
+      return "";
+    }
+    if (name.length() == 1) {
+      return name;
+    }
+    return name.charAt(0) + "*".repeat(name.length() - 1);
+  }
+
+  public record MatchHistoryView(
+      Long historyId,
+      LocalDateTime matchedAt,
+      String startPoint,
+      String endPoint,
+      List<String> maskedParticipants) {}
+
+  public record MatchParticipant(Long memberId, String nickname) {}
 }

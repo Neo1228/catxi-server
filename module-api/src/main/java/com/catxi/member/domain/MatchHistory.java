@@ -1,7 +1,7 @@
 package com.catxi.member.domain;
 
-import com.catxi.common.domain.BaseTimeEntity;
 import com.catxi.common.domain.Location;
+import com.catxi.common.persistence.BaseTimeEntity;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;

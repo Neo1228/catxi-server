@@ -1,8 +1,10 @@
 package com.catxi.member.repository;
 
 import com.catxi.member.domain.Member;
+import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,6 +20,16 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
   // 이메일 기준
   Optional<Member> findByEmail(String email);
 
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT member FROM Member member WHERE member.email = :email")
+  Optional<Member> findByEmailForUpdate(@Param("email") String email);
+
+  @Modifying
+  @Query(
+      "UPDATE Member member SET member.fcmFid = NULL, member.fcmFidUpdatedAt = NULL "
+          + "WHERE member.fcmFid = :fid AND member.id <> :memberId")
+  int clearFcmFidFromOtherMembers(@Param("fid") String fid, @Param("memberId") Long memberId);
+
   @Modifying
   @Query(
       "UPDATE Member target SET target.matchCount = target.matchCount + 1 WHERE target.id = :memberId")
@@ -31,9 +43,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
   // 닉네임 중복 조회용
   boolean existsByNickname(String nickname);
-
-  // FCM 토큰으로 회원 조회
-  Member findByFcmToken(String fcmToken);
 
   // 삭제된 회원 조회 불가
 }
