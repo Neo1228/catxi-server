@@ -3,7 +3,7 @@ package com.catxi.report.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalDateTime;
 
-public record ReportCreateRes(
+public record ReportCreateResponse(
     Long reportId,
     Long reportedUserId,
     String reportedUserNickname,

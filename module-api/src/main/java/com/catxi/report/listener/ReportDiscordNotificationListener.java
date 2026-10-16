@@ -1,4 +1,4 @@
-package com.catxi.report.service;
+package com.catxi.report.listener;
 
 import com.catxi.report.event.ReportCreatedEvent;
 import java.net.URI;

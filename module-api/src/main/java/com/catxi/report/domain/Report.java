@@ -1,8 +1,14 @@
 package com.catxi.report.domain;
 
-import com.catxi.common.domain.BaseTimeEntity;
-import com.catxi.member.domain.Member;
-import jakarta.persistence.*;
+import com.catxi.common.persistence.BaseTimeEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -10,16 +16,16 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(
+    name = "report",
     uniqueConstraints =
         @UniqueConstraint(
             name = "uk_report_room_reporter_target",
             columnNames = {"room_id", "reporter_id", "reported_member_id"}))
 @Getter
 @Builder
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 public class Report extends BaseTimeEntity {
-
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
@@ -27,13 +33,11 @@ public class Report extends BaseTimeEntity {
   @Column(name = "room_id", nullable = false)
   private Long roomId;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "reporter_id", nullable = false)
-  private Member reporter;
+  @Column(name = "reporter_id", nullable = false)
+  private Long reporterId;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "reported_member_id", nullable = false)
-  private Member reportedMember;
+  @Column(name = "reported_member_id", nullable = false)
+  private Long reportedMemberId;
 
   @Column(nullable = false, length = 500)
   private String reason;

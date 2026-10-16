@@ -1,22 +1,15 @@
 package com.catxi.report.service;
 
-import com.catxi.chat.domain.ChatRoom;
-import com.catxi.chat.error.ChatRoomErrorCode;
-import com.catxi.chat.repository.ChatParticipantRepository;
-import com.catxi.chat.repository.ChatRoomRepository;
+import com.catxi.chat.service.ChatRoomService;
 import com.catxi.common.api.exception.CatxiException;
 import com.catxi.common.persistence.DatabaseConstraint;
-import com.catxi.member.domain.Member;
-import com.catxi.member.error.MemberErrorCode;
-import com.catxi.member.repository.MemberRepository;
+import com.catxi.member.service.MemberService;
 import com.catxi.report.domain.Report;
-import com.catxi.report.dto.ReportCreateReq;
-import com.catxi.report.dto.ReportCreateRes;
 import com.catxi.report.error.ReportErrorCode;
 import com.catxi.report.event.ReportCreatedEvent;
 import com.catxi.report.repository.ReportRepository;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -27,40 +20,23 @@ import org.springframework.transaction.annotation.Transactional;
 public class ReportService {
 
   private final ReportRepository reportRepository;
-  private final MemberRepository memberRepository;
-  private final ChatRoomRepository chatRoomRepository;
-  private final ChatParticipantRepository chatParticipantRepository;
+  private final MemberService memberService;
+  private final ChatRoomService chatRoomService;
   private final ApplicationEventPublisher eventPublisher;
 
-  @Value("${discord.reports.enabled}")
-  private boolean discordReportsEnabled;
-
   @Transactional
-  public ReportCreateRes createReport(
-      Long roomId, String targetUserEmail, String reporterEmail, ReportCreateReq req) {
-    Member reporter =
-        memberRepository
-            .findByEmail(reporterEmail)
-            .orElseThrow(() -> new CatxiException(MemberErrorCode.MEMBER_NOT_FOUND));
-
-    ChatRoom chatRoom =
-        chatRoomRepository
-            .findById(roomId)
-            .orElseThrow(() -> new CatxiException(ChatRoomErrorCode.CHATROOM_NOT_FOUND));
-
-    Member reportedMember =
-        memberRepository
-            .findByEmail(targetUserEmail)
-            .orElseThrow(() -> new CatxiException(MemberErrorCode.MEMBER_NOT_FOUND));
-
-    validateReport(chatRoom, reporter, reportedMember);
+  public ReportCreated createReport(
+      Long roomId, String targetUserEmail, String reporterEmail, String reason) {
+    MemberService.MemberSummary reporter = memberService.findSummaryByEmail(reporterEmail);
+    MemberService.MemberSummary reportedMember = memberService.findSummaryByEmail(targetUserEmail);
+    validateReport(roomId, reporter, reportedMember);
 
     Report report =
         Report.builder()
             .roomId(roomId)
-            .reporter(reporter)
-            .reportedMember(reportedMember)
-            .reason(req.reason())
+            .reporterId(reporter.id())
+            .reportedMemberId(reportedMember.id())
+            .reason(reason)
             .build();
 
     Report savedReport;
@@ -72,37 +48,37 @@ public class ReportService {
       }
       throw exception;
     }
-    if (discordReportsEnabled) {
-      eventPublisher.publishEvent(
-          new ReportCreatedEvent(
-              savedReport.getId(), savedReport.getRoomId(), savedReport.getCreatedTime()));
-    }
+    eventPublisher.publishEvent(
+        new ReportCreatedEvent(
+            savedReport.getId(), savedReport.getRoomId(), savedReport.getCreatedTime()));
 
-    return new ReportCreateRes(
+    return new ReportCreated(
         savedReport.getId(),
-        reportedMember.getId(),
-        reportedMember.getNickname(),
+        reportedMember.id(),
+        reportedMember.nickname(),
         savedReport.getCreatedTime());
   }
 
-  private void validateReport(ChatRoom room, Member reporter, Member reportedMember) {
-    if (reporter.getId().equals(reportedMember.getId())) {
+  private void validateReport(
+      Long roomId,
+      MemberService.MemberSummary reporter,
+      MemberService.MemberSummary reportedMember) {
+    if (reporter.id().equals(reportedMember.id())) {
       throw new CatxiException(ReportErrorCode.SELF_REPORT_NOT_ALLOWED);
     }
 
-    if (!chatParticipantRepository.existsByChatRoomAndMember(room, reporter)) {
+    if (!chatRoomService.hasParticipant(roomId, reporter.id())) {
       throw new CatxiException(ReportErrorCode.NOT_A_CHAT_PARTICIPANT);
     }
 
-    if (!chatParticipantRepository.existsByChatRoomAndMember(room, reportedMember)) {
+    if (!chatRoomService.hasParticipant(roomId, reportedMember.id())) {
       throw new CatxiException(ReportErrorCode.REPORTED_MEMBER_NOT_IN_ROOM);
     }
-
-    reportRepository
-        .findDuplicateReport(room.getRoomId(), reporter.getId(), reportedMember.getId())
-        .ifPresent(
-            report -> {
-              throw new CatxiException(ReportErrorCode.ALREADY_REPORTED);
-            });
   }
+
+  public record ReportCreated(
+      Long reportId,
+      Long reportedMemberId,
+      String reportedMemberNickname,
+      LocalDateTime createdAt) {}
 }
