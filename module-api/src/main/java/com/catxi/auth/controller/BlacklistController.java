@@ -1,6 +1,6 @@
 package com.catxi.auth.controller;
 
-import com.catxi.auth.dto.BlacklistStatusRes;
+import com.catxi.auth.dto.BlacklistStatusResponse;
 import com.catxi.auth.service.BlacklistService;
 import com.catxi.common.api.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -46,7 +46,9 @@ public class BlacklistController {
   // 블랙리스트 여부 조회
   @Operation(summary = "사용자 ID로 블랙리스트 상태 확인", description = "사용자가 블랙리스트에 등록되어 있는지 확인합니다.")
   @GetMapping("/blacklist/uID/{userId}")
-  public ApiResponse<BlacklistStatusRes> checkBlacklistStatusById(@PathVariable Long userId) {
-    return ApiResponse.success(blacklistService.getBlacklistStatus(userId));
+  public ApiResponse<BlacklistStatusResponse> checkBlacklistStatusById(@PathVariable Long userId) {
+    BlacklistService.BlacklistStatus status = blacklistService.getBlacklistStatus(userId);
+    return ApiResponse.success(
+        new BlacklistStatusResponse(status.blacklisted(), status.userId(), status.email()));
   }
 }

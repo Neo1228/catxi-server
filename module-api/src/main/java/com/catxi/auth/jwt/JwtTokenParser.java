@@ -15,12 +15,12 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Slf4j
-public class JwtUtil {
+public class JwtTokenParser {
 
   private final SecretKey secretKey;
   private final JwtParser jwtParser;
 
-  public JwtUtil(JwtConfig jwtConfig) {
+  public JwtTokenParser(JwtConfig jwtConfig) {
     this.secretKey = Keys.hmacShaKeyFor(Base64.getDecoder().decode(jwtConfig.getSecret()));
     this.jwtParser = Jwts.parser().verifyWith((SecretKey) secretKey).build();
   }

@@ -1,4 +1,4 @@
-package com.catxi.auth.infra;
+package com.catxi.auth.infrastructure;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -10,13 +10,13 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
-public class CodeCache {
+public class OAuthCodeCache {
   private static final String PREFIX = "oauth:used-code:";
   private static final Duration CODE_TTL = Duration.ofMinutes(5);
 
   private final RedisTemplate<String, String> tokenRedisTemplate;
 
-  public CodeCache(
+  public OAuthCodeCache(
       @Qualifier("tokenRedisTemplate") RedisTemplate<String, String> tokenRedisTemplate) {
     this.tokenRedisTemplate = tokenRedisTemplate;
   }

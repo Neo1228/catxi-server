@@ -17,7 +17,7 @@ import tools.jackson.databind.ObjectMapper;
 @ConditionalOnProperty(prefix = "catxi.auth", name = "mode", havingValue = "kakao")
 @RequiredArgsConstructor
 @Slf4j
-public class KakaoUtil {
+public class KakaoOAuthClient {
 
   private final RestClient restClient;
   private final ObjectMapper objectMapper;

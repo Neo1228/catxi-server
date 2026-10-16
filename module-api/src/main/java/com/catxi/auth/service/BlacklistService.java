@@ -1,16 +1,11 @@
 package com.catxi.auth.service;
 
-import com.catxi.auth.dto.BlacklistStatusRes;
-import com.catxi.auth.infra.RefreshTokenRepository;
-import com.catxi.auth.infra.TokenBlacklistRepository;
-import com.catxi.common.api.exception.CatxiException;
-import com.catxi.member.domain.Member;
-import com.catxi.member.error.MemberErrorCode;
-import com.catxi.member.repository.MemberRepository;
+import com.catxi.auth.infrastructure.RefreshTokenRepository;
+import com.catxi.auth.infrastructure.TokenBlacklistRepository;
+import com.catxi.member.service.MemberService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -19,33 +14,23 @@ public class BlacklistService {
 
   private final TokenBlacklistRepository tokenBlacklistRepository;
   private final RefreshTokenRepository refreshTokenRepository;
-  private final MemberRepository memberRepository;
+  private final MemberService memberService;
 
   // 사용자를 블랙리스트에 추가 (영구)
-  @Transactional
   public void addUserToBlacklistPermanent(Long userId) {
-    Member member =
-        memberRepository
-            .findById(userId)
-            .orElseThrow(() -> new CatxiException(MemberErrorCode.MEMBER_NOT_FOUND));
+    MemberService.MemberAccount member = memberService.findAccountById(userId);
 
     // 사용자를 블랙리스트에 추가
     tokenBlacklistRepository.addUserToBlacklist(userId.toString());
 
     // 해당 사용자의 refreshToken을 Redis에서 삭제
-    refreshTokenRepository.delete(member.getEmail());
+    refreshTokenRepository.delete(member.email());
 
     log.info("회원 블랙리스트 추가 및 RefreshToken 삭제: memberId={}", userId);
   }
 
   // 사용자를 블랙리스트에서 제거
-  @Transactional
   public void removeUserFromBlacklist(Long userId) {
-    Member member =
-        memberRepository
-            .findById(userId)
-            .orElseThrow(() -> new CatxiException(MemberErrorCode.MEMBER_NOT_FOUND));
-
     tokenBlacklistRepository.removeUserFromBlacklist(userId.toString());
     log.info("회원 블랙리스트 해제: memberId={}", userId);
   }
@@ -59,9 +44,15 @@ public class BlacklistService {
     return tokenBlacklistRepository.isTokenBlacklisted(token);
   }
 
-  public BlacklistStatusRes getBlacklistStatus(Long userId) {
+  public BlacklistStatus getBlacklistStatus(Long userId) {
     boolean blacklisted = isUserBlacklisted(userId);
-    String email = memberRepository.findById(userId).map(Member::getEmail).orElse("Unknown");
-    return new BlacklistStatusRes(blacklisted, userId, email);
+    String email =
+        memberService
+            .findAccountByIdOptional(userId)
+            .map(MemberService.MemberAccount::email)
+            .orElse("Unknown");
+    return new BlacklistStatus(blacklisted, userId, email);
   }
+
+  public record BlacklistStatus(boolean blacklisted, Long userId, String email) {}
 }

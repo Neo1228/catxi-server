@@ -1,6 +1,6 @@
 package com.catxi.auth.config;
 
-import com.catxi.auth.service.CustomUserDetailsService;
+import com.catxi.auth.security.MemberUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -13,7 +13,7 @@ public class AuthenticationConfig {
 
   @Bean
   public AuthenticationManager authenticationManager(
-      CustomUserDetailsService userDetailsService, BCryptPasswordEncoder passwordEncoder) {
+      MemberUserDetailsService userDetailsService, BCryptPasswordEncoder passwordEncoder) {
     DaoAuthenticationProvider authenticationProvider =
         new DaoAuthenticationProvider(userDetailsService);
     authenticationProvider.setPasswordEncoder(passwordEncoder);

@@ -1,13 +1,13 @@
-package com.catxi.auth.infra;
+package com.catxi.auth.security;
 
 import java.time.Duration;
 import org.springframework.http.ResponseCookie;
-import org.springframework.stereotype.Component;
 
-@Component
-public class CookieUtil {
+public final class RefreshTokenCookie {
 
   private static final String REFRESH_TOKEN_COOKIE_NAME = "refresh";
+
+  private RefreshTokenCookie() {}
 
   public static ResponseCookie createCookie(String token, Duration ttl) {
 

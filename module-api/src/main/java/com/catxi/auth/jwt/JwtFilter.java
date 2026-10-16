@@ -1,18 +1,18 @@
 package com.catxi.auth.jwt;
 
 import com.catxi.auth.config.AuthMode;
-import com.catxi.auth.infra.CookieUtil;
-import com.catxi.auth.infra.TokenBlacklistRepository;
-import com.catxi.auth.security.CustomUserDetails;
+import com.catxi.auth.error.AuthErrorCode;
+import com.catxi.auth.infrastructure.TokenBlacklistRepository;
+import com.catxi.auth.security.MemberUserDetails;
+import com.catxi.auth.security.RefreshTokenCookie;
 import com.catxi.auth.service.TokenService;
 import com.catxi.common.api.ApiResponse;
 import com.catxi.common.api.error.CommonErrorCode;
 import com.catxi.common.api.error.ErrorCode;
 import com.catxi.common.api.exception.CatxiException;
-import com.catxi.member.domain.Member;
 import com.catxi.member.domain.MemberStatus;
 import com.catxi.member.error.MemberErrorCode;
-import com.catxi.member.repository.MemberRepository;
+import com.catxi.member.service.MemberService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
@@ -34,9 +34,9 @@ import tools.jackson.databind.ObjectMapper;
 @RequiredArgsConstructor
 public class JwtFilter extends OncePerRequestFilter {
 
-  private final JwtUtil jwtUtil;
+  private final JwtTokenParser jwtTokenParser;
   private final TokenService tokenService;
-  private final MemberRepository memberRepository;
+  private final MemberService memberService;
   private final TokenBlacklistRepository tokenBlacklistRepository;
   private final AuthMode authMode;
   private final ObjectMapper objectMapper;
@@ -74,16 +74,16 @@ public class JwtFilter extends OncePerRequestFilter {
       Claims claims = null;
       boolean refreshedAccessToken = false;
       try {
-        claims = jwtUtil.parseJwt(accessToken);
+        claims = jwtTokenParser.parseJwt(accessToken);
       } catch (ExpiredJwtException e) {
-        if (!"access".equals(jwtUtil.getType(e.getClaims()))) {
-          throw new CatxiException(MemberErrorCode.INVALID_TOKEN);
+        if (!"access".equals(jwtTokenParser.getType(e.getClaims()))) {
+          throw new CatxiException(AuthErrorCode.INVALID_TOKEN);
         }
         if (tokenBlacklistRepository.isTokenBlacklisted(accessToken)) {
-          throw new CatxiException(MemberErrorCode.ACCESS_FORBIDDEN);
+          throw new CatxiException(AuthErrorCode.ACCESS_FORBIDDEN);
         }
 
-        String email = jwtUtil.getEmail(e.getClaims());
+        String email = jwtTokenParser.getEmail(e.getClaims());
         TokenService.RefreshResult refreshedToken =
             tokenService.zeroDownRefresh(email, refreshCookie(request));
 
@@ -91,7 +91,7 @@ public class JwtFilter extends OncePerRequestFilter {
           setAuthentication(refreshedToken.member());
           response.setHeader(
               "Set-Cookie",
-              CookieUtil.createCookie(
+              RefreshTokenCookie.createCookie(
                       refreshedToken.tokens().refreshToken(),
                       refreshedToken.tokens().refreshTokenTtl())
                   .toString());
@@ -106,26 +106,27 @@ public class JwtFilter extends OncePerRequestFilter {
         }
 
         if (!refreshedAccessToken) {
-          writeErrorResponse(response, MemberErrorCode.ACCESS_EXPIRED);
+          writeErrorResponse(response, AuthErrorCode.ACCESS_EXPIRED);
           return;
         }
       } catch (Exception e) {
-        throw new CatxiException(MemberErrorCode.INVALID_TOKEN);
+        throw new CatxiException(AuthErrorCode.INVALID_TOKEN);
       }
 
       if (!refreshedAccessToken) {
-        String category = jwtUtil.getType(claims);
+        String category = jwtTokenParser.getType(claims);
         if (!"access".equals(category)) {
-          throw new CatxiException(MemberErrorCode.INVALID_TOKEN);
+          throw new CatxiException(AuthErrorCode.INVALID_TOKEN);
         }
 
         if (tokenBlacklistRepository.isTokenBlacklisted(accessToken)) {
           log.info("블랙리스트 토큰의 요청을 차단했습니다");
-          throw new CatxiException(MemberErrorCode.ACCESS_FORBIDDEN);
+          throw new CatxiException(AuthErrorCode.ACCESS_FORBIDDEN);
         }
 
-        String email = jwtUtil.getEmail(claims);
-        Member member = memberRepository.findByEmail(email).orElse(null);
+        String email = jwtTokenParser.getEmail(claims);
+        MemberService.MemberAccount member =
+            memberService.findAccountByEmailOptional(email).orElse(null);
         if (member == null) {
           throw new CatxiException(MemberErrorCode.MEMBER_NOT_FOUND);
         }
@@ -152,18 +153,19 @@ public class JwtFilter extends OncePerRequestFilter {
     objectMapper.writeValue(response.getOutputStream(), ApiResponse.failure(errorCode));
   }
 
-  private void setAuthentication(Member member) {
-    CustomUserDetails customUserDetails = new CustomUserDetails(member);
+  private void setAuthentication(MemberService.MemberAccount member) {
+    MemberUserDetails memberUserDetails =
+        new MemberUserDetails(member.email(), null, member.role());
     Authentication authToken =
         new UsernamePasswordAuthenticationToken(
-            customUserDetails, null, customUserDetails.getAuthorities());
+            memberUserDetails, null, memberUserDetails.getAuthorities());
     SecurityContextHolder.getContext().setAuthentication(authToken);
   }
 
-  private void validateMember(Member member) {
-    if (member.getStatus() == MemberStatus.INACTIVE
-        || tokenBlacklistRepository.isUserBlacklisted(member.getId().toString())) {
-      throw new CatxiException(MemberErrorCode.ACCESS_FORBIDDEN);
+  private void validateMember(MemberService.MemberAccount member) {
+    if (member.status() == MemberStatus.INACTIVE
+        || tokenBlacklistRepository.isUserBlacklisted(member.id().toString())) {
+      throw new CatxiException(AuthErrorCode.ACCESS_FORBIDDEN);
     }
   }
 
