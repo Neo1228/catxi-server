@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 
-@SpringBootApplication(scanBasePackages = "com.catxi.worker")
+@SpringBootApplication
 public class CatxiWorkerApplication {
 
   public static void main(String[] args) {

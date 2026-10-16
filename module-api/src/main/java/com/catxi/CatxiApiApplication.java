@@ -1,16 +1,12 @@
-package com.catxi.api;
+package com.catxi;
 
 import jakarta.annotation.PostConstruct;
 import java.util.TimeZone;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.persistence.autoconfigure.EntityScan;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-@SpringBootApplication(scanBasePackages = "com.catxi")
-@EntityScan(basePackages = "com.catxi")
-@EnableJpaRepositories(basePackages = "com.catxi")
+@SpringBootApplication
 @EnableScheduling
 public class CatxiApiApplication {
 
