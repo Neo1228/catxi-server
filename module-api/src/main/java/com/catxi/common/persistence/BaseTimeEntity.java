@@ -1,4 +1,4 @@
-package com.catxi.common.domain;
+package com.catxi.common.persistence;
 
 import jakarta.persistence.MappedSuperclass;
 import java.time.LocalDateTime;

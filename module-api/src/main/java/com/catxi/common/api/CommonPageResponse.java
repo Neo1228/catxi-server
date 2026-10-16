@@ -16,13 +16,29 @@ public class CommonPageResponse<T> {
   private boolean hasNext; // 다음 페이지 존재 여부
 
   public static <T> CommonPageResponse<T> of(Page<T> page) {
+    return of(
+        page.getContent(),
+        page.getTotalPages(),
+        page.getTotalElements(),
+        page.getNumber(),
+        page.getSize(),
+        page.hasNext());
+  }
+
+  public static <T> CommonPageResponse<T> of(
+      List<T> content,
+      int totalPages,
+      long totalElements,
+      int currentPage,
+      int size,
+      boolean hasNext) {
     return CommonPageResponse.<T>builder()
-        .content(page.getContent())
-        .totalPages(page.getTotalPages())
-        .totalElements(page.getTotalElements())
-        .currentPage(page.getNumber())
-        .size(page.getSize())
-        .hasNext(page.hasNext())
+        .content(content)
+        .totalPages(totalPages)
+        .totalElements(totalElements)
+        .currentPage(currentPage)
+        .size(size)
+        .hasNext(hasNext)
         .build();
   }
 }

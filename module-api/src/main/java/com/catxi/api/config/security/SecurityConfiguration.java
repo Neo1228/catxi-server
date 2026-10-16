@@ -1,14 +1,14 @@
 package com.catxi.api.config.security;
 
 import com.catxi.auth.config.AuthMode;
-import com.catxi.auth.infra.TokenBlacklistRepository;
+import com.catxi.auth.infrastructure.TokenBlacklistRepository;
 import com.catxi.auth.jwt.JwtFilter;
-import com.catxi.auth.jwt.JwtUtil;
+import com.catxi.auth.jwt.JwtTokenParser;
 import com.catxi.auth.service.TokenService;
 import com.catxi.common.api.ApiResponse;
 import com.catxi.common.api.error.CommonErrorCode;
 import com.catxi.common.api.error.ErrorCode;
-import com.catxi.member.repository.MemberRepository;
+import com.catxi.member.service.MemberService;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,23 +30,23 @@ import tools.jackson.databind.ObjectMapper;
 @EnableWebSecurity
 public class SecurityConfiguration {
 
-  private final JwtUtil jwtUtil;
-  private final MemberRepository memberRepository;
+  private final JwtTokenParser jwtTokenParser;
+  private final MemberService memberService;
   private final TokenBlacklistRepository tokenBlacklistRepository;
   private final CorsConfigurationSource corsConfigurationSource;
   private final ObjectMapper objectMapper;
   private final AuthMode authMode;
 
   public SecurityConfiguration(
-      JwtUtil jwtUtil,
-      MemberRepository memberRepository,
+      JwtTokenParser jwtTokenParser,
+      MemberService memberService,
       TokenBlacklistRepository tokenBlacklistRepository,
       CorsConfigurationSource corsConfigurationSource,
       ObjectMapper objectMapper,
       Environment environment,
       @Value("${catxi.auth.mode:kakao}") String configuredAuthMode) {
-    this.jwtUtil = jwtUtil;
-    this.memberRepository = memberRepository;
+    this.jwtTokenParser = jwtTokenParser;
+    this.memberService = memberService;
     this.tokenBlacklistRepository = tokenBlacklistRepository;
     this.corsConfigurationSource = corsConfigurationSource;
     this.objectMapper = objectMapper;
@@ -120,9 +120,9 @@ public class SecurityConfiguration {
     // JwtFilter
     http.addFilterBefore(
         new JwtFilter(
-            jwtUtil,
+            jwtTokenParser,
             tokenService,
-            memberRepository,
+            memberService,
             tokenBlacklistRepository,
             authMode,
             objectMapper),

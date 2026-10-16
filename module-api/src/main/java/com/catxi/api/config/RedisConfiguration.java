@@ -7,6 +7,7 @@ import jakarta.annotation.PreDestroy;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ThreadPoolExecutor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,6 +25,7 @@ import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.data.redis.listener.PatternTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.util.StringUtils;
 
@@ -95,12 +97,18 @@ public class RedisConfiguration {
     return tpl;
   }
 
-  @Bean("redisPubSubScheduler")
-  public ThreadPoolTaskScheduler redisPubSubScheduler() {
-    ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
-    scheduler.setPoolSize(4);
-    scheduler.setThreadNamePrefix("redis-pubsub-");
-    return scheduler;
+  @Bean("redisPubSubExecutor")
+  public ThreadPoolTaskExecutor redisPubSubExecutor() {
+    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+    executor.setCorePoolSize(4);
+    executor.setMaxPoolSize(4);
+    executor.setQueueCapacity(512);
+    executor.setThreadNamePrefix("redis-pubsub-");
+    // 과부하 때 무제한 적재하거나 메시지를 버리는 대신 수신 측에 역압을 전달한다.
+    executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+    executor.setWaitForTasksToCompleteOnShutdown(true);
+    executor.setAwaitTerminationSeconds(5);
+    return executor;
   }
 
   @Bean({"readyTimeoutScheduler", "taskScheduler"})
@@ -115,10 +123,10 @@ public class RedisConfiguration {
   public RedisMessageListenerContainer redisMessageListenerContainer(
       @Qualifier("chatRedisConnectionFactory") RedisConnectionFactory cf,
       RedisPubSubService listener,
-      @Qualifier("redisPubSubScheduler") ThreadPoolTaskScheduler redisPubSubScheduler) {
+      @Qualifier("redisPubSubExecutor") ThreadPoolTaskExecutor redisPubSubExecutor) {
     RedisMessageListenerContainer container = new RedisMessageListenerContainer();
     container.setConnectionFactory(cf);
-    container.setTaskExecutor(redisPubSubScheduler);
+    container.setTaskExecutor(redisPubSubExecutor);
 
     // 명시적 구독: 채널 + 패턴
     container.addMessageListener(listener, new ChannelTopic("chat"));
@@ -134,10 +142,6 @@ public class RedisConfiguration {
     listenerContainers.add(container);
     return container;
   }
-
-  // FCM 전용 리스너 - FCM이 Queue 기반으로 변경되어 불필요
-  // @Bean
-  // public RedisMessageListenerContainer fcmOnlyListenerContainer(...) { ... }
 
   /** Redis 리스너 컨테이너들의 정리 작업 */
   @PreDestroy
