@@ -1,8 +1,8 @@
-package com.catxi.worker.notification;
+package com.catxi.worker.notification.delivery;
 
-import com.catxi.chat.contract.ChatPresenceKeys;
-import com.catxi.notification.contract.FcmNotificationEvent;
-import com.catxi.notification.contract.FcmNotificationEvent.NotificationType;
+import com.catxi.contract.chat.ChatPresenceKeys;
+import com.catxi.contract.notification.FcmNotificationEvent;
+import com.catxi.contract.notification.FcmNotificationEvent.NotificationType;
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutureCallback;
 import com.google.api.core.ApiFutures;

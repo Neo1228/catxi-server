@@ -1,4 +1,4 @@
-package com.catxi.worker.config;
+package com.catxi.worker.notification.config;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;

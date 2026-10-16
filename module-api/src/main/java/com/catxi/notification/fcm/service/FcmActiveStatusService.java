@@ -1,6 +1,6 @@
 package com.catxi.notification.fcm.service;
 
-import com.catxi.chat.contract.ChatPresenceKeys;
+import com.catxi.contract.chat.ChatPresenceKeys;
 import com.catxi.common.api.exception.CatxiException;
 import com.catxi.member.domain.Member;
 import com.catxi.member.error.MemberErrorCode;

@@ -1,6 +1,6 @@
-package com.catxi.worker.metrics;
+package com.catxi.worker.notification.metrics;
 
-import com.catxi.worker.stream.RedisStreamStore;
+import com.catxi.worker.notification.stream.RedisStreamStore;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;

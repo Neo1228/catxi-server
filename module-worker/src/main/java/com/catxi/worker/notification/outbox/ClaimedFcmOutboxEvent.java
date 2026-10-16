@@ -1,4 +1,4 @@
-package com.catxi.worker.outbox;
+package com.catxi.worker.notification.outbox;
 
 public record ClaimedFcmOutboxEvent(
     long id, String eventId, String eventType, String payload, int retryCount) {}

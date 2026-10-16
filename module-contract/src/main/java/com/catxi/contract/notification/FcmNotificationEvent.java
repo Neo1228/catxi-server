@@ -1,4 +1,4 @@
-package com.catxi.notification.contract;
+package com.catxi.contract.notification;
 
 import java.time.LocalDateTime;
 import java.util.List;

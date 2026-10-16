@@ -19,7 +19,7 @@ import com.catxi.common.api.exception.CatxiException;
 import com.catxi.member.domain.Member;
 import com.catxi.member.error.MemberErrorCode;
 import com.catxi.member.repository.MemberRepository;
-import com.catxi.notification.contract.FcmNotificationEvent;
+import com.catxi.contract.notification.FcmNotificationEvent;
 import com.catxi.notification.fcm.service.FcmOutboxService;
 import java.time.LocalDateTime;
 import java.util.ArrayList;

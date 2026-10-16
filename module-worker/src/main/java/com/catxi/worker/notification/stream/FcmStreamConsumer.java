@@ -1,9 +1,9 @@
-package com.catxi.worker.stream;
+package com.catxi.worker.notification.stream;
 
-import com.catxi.notification.contract.FcmNotificationEvent;
-import com.catxi.worker.deadletter.DeadLetterRepository;
-import com.catxi.worker.notification.DeliveryOutcome;
-import com.catxi.worker.notification.NotificationDeliveryService;
+import com.catxi.contract.notification.FcmNotificationEvent;
+import com.catxi.worker.notification.deadletter.DeadLetterRepository;
+import com.catxi.worker.notification.delivery.DeliveryOutcome;
+import com.catxi.worker.notification.delivery.NotificationDeliveryService;
 import java.net.InetAddress;
 import java.time.Duration;
 import java.util.LinkedHashSet;

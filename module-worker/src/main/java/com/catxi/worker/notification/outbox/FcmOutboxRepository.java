@@ -1,4 +1,4 @@
-package com.catxi.worker.outbox;
+package com.catxi.worker.notification.outbox;
 
 import java.util.List;
 import java.util.Objects;

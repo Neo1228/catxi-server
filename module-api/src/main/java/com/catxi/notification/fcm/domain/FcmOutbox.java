@@ -1,7 +1,7 @@
 package com.catxi.notification.fcm.domain;
 
-import com.catxi.notification.contract.FcmNotificationEvent;
-import com.catxi.notification.contract.FcmNotificationEvent.NotificationType;
+import com.catxi.contract.notification.FcmNotificationEvent;
+import com.catxi.contract.notification.FcmNotificationEvent.NotificationType;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;

@@ -1,7 +1,7 @@
-package com.catxi.worker.outbox;
+package com.catxi.worker.notification.outbox;
 
-import com.catxi.worker.deadletter.DeadLetterRepository;
-import com.catxi.worker.stream.RedisStreamStore;
+import com.catxi.worker.notification.deadletter.DeadLetterRepository;
+import com.catxi.worker.notification.stream.RedisStreamStore;
 import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

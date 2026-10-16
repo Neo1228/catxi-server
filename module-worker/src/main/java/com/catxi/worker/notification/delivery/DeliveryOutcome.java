@@ -1,4 +1,4 @@
-package com.catxi.worker.notification;
+package com.catxi.worker.notification.delivery;
 
 import java.util.List;
 import java.util.Map;

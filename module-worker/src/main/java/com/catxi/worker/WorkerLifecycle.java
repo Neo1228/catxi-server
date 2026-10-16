@@ -1,9 +1,9 @@
 package com.catxi.worker;
 
-import com.catxi.worker.metrics.FcmQueueMetrics;
-import com.catxi.worker.outbox.FcmOutboxPoller;
-import com.catxi.worker.stream.FcmStreamConsumer;
-import com.catxi.worker.stream.RedisStreamStore;
+import com.catxi.worker.notification.metrics.FcmQueueMetrics;
+import com.catxi.worker.notification.outbox.FcmOutboxPoller;
+import com.catxi.worker.notification.stream.FcmStreamConsumer;
+import com.catxi.worker.notification.stream.RedisStreamStore;
 import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

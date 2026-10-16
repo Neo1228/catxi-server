@@ -8,7 +8,7 @@ import com.catxi.chat.error.ChatRoomErrorCode;
 import com.catxi.chat.repository.ChatParticipantRepository;
 import com.catxi.chat.repository.ChatRoomRepository;
 import com.catxi.common.api.exception.CatxiException;
-import com.catxi.notification.contract.FcmNotificationEvent;
+import com.catxi.contract.notification.FcmNotificationEvent;
 import com.catxi.notification.fcm.service.FcmOutboxService;
 import java.time.LocalDateTime;
 import java.time.ZoneId;

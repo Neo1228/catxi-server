@@ -1,4 +1,4 @@
-package com.catxi.worker.deadletter;
+package com.catxi.worker.notification.deadletter;
 
 import com.catxi.worker.deadletter.FcmDeadLetterReplayService.ReplayResult;
 import java.time.Duration;

@@ -1,8 +1,8 @@
-package com.catxi.worker.deadletter;
+package com.catxi.worker.notification.deadletter;
 
-import com.catxi.notification.contract.FcmNotificationEvent;
+import com.catxi.contract.notification.FcmNotificationEvent;
 import com.catxi.worker.deadletter.DeadLetterRepository.DeadLetterRecord;
-import com.catxi.worker.outbox.FcmOutboxRepository;
+import com.catxi.worker.notification.outbox.FcmOutboxRepository;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.reactive.TransactionalOperator;

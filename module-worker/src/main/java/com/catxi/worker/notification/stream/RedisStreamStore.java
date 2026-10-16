@@ -1,4 +1,4 @@
-package com.catxi.worker.stream;
+package com.catxi.worker.notification.stream;
 
 import java.util.List;
 import java.util.Map;
