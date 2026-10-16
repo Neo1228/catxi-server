@@ -1,9 +1,9 @@
-package com.catxi.chat.map.dto;
+package com.catxi.chat.map.domain;
 
-public record CoordinateRes(
+public record MapCoordinate(
     Long roomId,
     String email,
-    String name,
+    String memberName,
     String nickname,
     Double latitude,
     Double longitude,

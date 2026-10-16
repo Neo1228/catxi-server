@@ -1,6 +1,7 @@
 package com.catxi.chat.map.realtime;
 
-import com.catxi.chat.dto.ChatCoordinateBroadcast;
+import com.catxi.chat.map.domain.MapCoordinate;
+import com.catxi.chat.realtime.dto.ChatCoordinateBroadcast;
 import com.catxi.common.api.error.CommonErrorCode;
 import com.catxi.common.api.exception.CatxiException;
 import lombok.RequiredArgsConstructor;
@@ -19,9 +20,18 @@ public class MapCoordinatePublisher {
   private final @Qualifier("chatPubSub") StringRedisTemplate redisTemplate;
   private final ObjectMapper objectMapper;
 
-  public void publish(ChatCoordinateBroadcast coordinate) {
+  public void publish(MapCoordinate coordinate) {
     try {
-      redisTemplate.convertAndSend("map", objectMapper.writeValueAsString(coordinate));
+      ChatCoordinateBroadcast message =
+          new ChatCoordinateBroadcast(
+              coordinate.roomId(),
+              coordinate.email(),
+              coordinate.memberName(),
+              coordinate.nickname(),
+              coordinate.latitude(),
+              coordinate.longitude(),
+              coordinate.distance());
+      redisTemplate.convertAndSend("map", objectMapper.writeValueAsString(message));
     } catch (JacksonException exception) {
       log.error("좌표 실시간 전송 메시지를 만들지 못했습니다. roomId={}", coordinate.roomId(), exception);
       throw new CatxiException(CommonErrorCode.INTERNAL_SERVER_ERROR);

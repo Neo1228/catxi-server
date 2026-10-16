@@ -1,11 +1,10 @@
-package com.catxi.chat.map.service;
+package com.catxi.chat.map.repository;
 
 import com.catxi.chat.map.error.MapErrorCode;
 import com.catxi.common.api.exception.CatxiException;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -16,7 +15,7 @@ import tools.jackson.databind.ObjectMapper;
 @Slf4j
 @Repository
 @RequiredArgsConstructor
-public class CoordinateProvider {
+public class CoordinateRepository {
   private final StringRedisTemplate redisTemplate;
   private final ObjectMapper objectMapper;
   private static final long GEO_TTL_SECONDS = 300;
@@ -63,7 +62,7 @@ public class CoordinateProvider {
 
     try {
       String json = objectMapper.writeValueAsString(coordMap);
-      redisTemplate.opsForValue().set(key, json, GEO_TTL_SECONDS, TimeUnit.SECONDS); // TTL 적용
+      redisTemplate.opsForValue().set(key, json, Duration.ofSeconds(GEO_TTL_SECONDS));
     } catch (Exception e) {
       log.error("[좌표 저장 실패] roomId: {}", roomId);
       throw new CatxiException(MapErrorCode.COORDINATE_SAVE_FAILED);

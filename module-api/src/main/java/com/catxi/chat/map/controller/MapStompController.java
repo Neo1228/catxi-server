@@ -1,6 +1,6 @@
 package com.catxi.chat.map.controller;
 
-import com.catxi.chat.map.dto.CoordinateUpdateReq;
+import com.catxi.chat.map.dto.CoordinateUpdateRequest;
 import com.catxi.chat.map.service.MapService;
 import jakarta.validation.Valid;
 import java.security.Principal;
@@ -17,7 +17,9 @@ public class MapStompController {
 
   @MessageMapping("/map/{roomId}")
   public void sendCoordinate(
-      @DestinationVariable Long roomId, @Valid CoordinateUpdateReq request, Principal principal) {
+      @DestinationVariable Long roomId,
+      @Valid CoordinateUpdateRequest request,
+      Principal principal) {
     mapService.shareCoordinate(
         roomId, principal.getName(), request.latitude(), request.longitude());
   }
