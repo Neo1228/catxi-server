@@ -1,7 +1,7 @@
 package com.catxi.notification.fcm.service;
 
-import com.catxi.notification.contract.FcmNotificationEvent;
 import com.catxi.notification.fcm.domain.FcmOutbox;
+import com.catxi.notification.fcm.event.FcmNotificationEvent;
 import com.catxi.notification.fcm.repository.FcmOutboxRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;

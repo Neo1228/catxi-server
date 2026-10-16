@@ -1,7 +1,7 @@
 package com.catxi.notification.fcm.domain;
 
-import com.catxi.notification.contract.FcmNotificationEvent;
-import com.catxi.notification.contract.FcmNotificationEvent.NotificationType;
+import com.catxi.notification.fcm.event.FcmNotificationEvent;
+import com.catxi.notification.fcm.event.FcmNotificationEvent.NotificationType;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
@@ -60,7 +60,8 @@ public class FcmOutbox {
 
   public enum OutboxStatus {
     PENDING, // 발행 대기 상태
-    SENT, // 발행 완료
+    PUBLISHED, // Redis Stream에 발행했고 워커 확인을 기다리는 상태
+    SENT, // 워커가 전송을 마친 상태
     FAILED // 발행 실패
   }
 }

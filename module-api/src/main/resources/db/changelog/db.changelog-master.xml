@@ -37,5 +37,7 @@
     <include file="v1.0/029-remove-discord-report-outbox.xml" relativeToChangelogFile="true"/>
     <include file="v1.0/030-fcm-dead-letter-replay.xml" relativeToChangelogFile="true"/>
     <include file="v1.0/031-fcm-failure-retention.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/032-remove-duplicate-fcm-outbox-index.xml" relativeToChangelogFile="true"/>
+    <include file="v1.0/033-add-member-fcm-fid.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

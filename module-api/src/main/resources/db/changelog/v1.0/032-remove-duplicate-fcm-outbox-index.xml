@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="032-01-remove-duplicate-outbox-event-index" author="catxi-team">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <and>
+                <tableExists tableName="fcm_outbox"/>
+                <indexExists tableName="fcm_outbox" indexName="idx_fcm_outbox_event_id"/>
+            </and>
+        </preConditions>
+        <dropIndex tableName="fcm_outbox" indexName="idx_fcm_outbox_event_id"/>
+        <rollback>
+            <createIndex tableName="fcm_outbox" indexName="idx_fcm_outbox_event_id">
+                <column name="event_id"/>
+            </createIndex>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

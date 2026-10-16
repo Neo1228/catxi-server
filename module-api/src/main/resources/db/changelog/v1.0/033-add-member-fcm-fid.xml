@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="033-01-add-member-fcm-fid" author="catxi-team">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <not>
+                <columnExists tableName="member" columnName="fcm_fid"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="member">
+            <column name="fcm_fid" type="VARCHAR(255)"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="member" columnName="fcm_fid"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="033-02-add-member-fcm-fid-updated-at" author="catxi-team">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <not>
+                <columnExists tableName="member" columnName="fcm_fid_updated_at"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="member">
+            <column name="fcm_fid_updated_at" type="DATETIME"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="member" columnName="fcm_fid_updated_at"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="033-03-unique-member-fcm-fid" author="catxi-team">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <not>
+                <indexExists tableName="member" indexName="uk_member_fcm_fid"/>
+            </not>
+        </preConditions>
+        <createIndex tableName="member" indexName="uk_member_fcm_fid" unique="true">
+            <column name="fcm_fid"/>
+        </createIndex>
+        <rollback>
+            <dropIndex tableName="member" indexName="uk_member_fcm_fid"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
