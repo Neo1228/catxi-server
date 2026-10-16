@@ -1,22 +1,26 @@
-package com.catxi.worker.notification;
+package com.catxi.worker.notification.lifecycle;
 
 import com.catxi.worker.notification.metrics.FcmQueueMetrics;
 import com.catxi.worker.notification.outbox.FcmOutboxPoller;
 import com.catxi.worker.notification.stream.FcmStreamConsumer;
 import com.catxi.worker.notification.stream.RedisStreamStore;
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.boot.health.contributor.Health;
+import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import reactor.core.Disposable;
 import reactor.util.retry.Retry;
 
-@Component
-public class NotificationWorkerLifecycle {
+@Component("notificationWorker")
+public class NotificationWorkerLifecycle implements HealthIndicator {
 
   private static final Logger log = LoggerFactory.getLogger(NotificationWorkerLifecycle.class);
 
@@ -24,7 +28,7 @@ public class NotificationWorkerLifecycle {
   private final ObjectProvider<FcmOutboxPoller> outboxPollerProvider;
   private final ObjectProvider<FcmStreamConsumer> streamConsumerProvider;
   private final ObjectProvider<FcmQueueMetrics> queueMetricsProvider;
-  private final NotificationWorkerReadiness readiness;
+  private final AtomicBoolean ready;
   private Disposable startupSubscription;
   private boolean started;
 
@@ -33,12 +37,12 @@ public class NotificationWorkerLifecycle {
       ObjectProvider<FcmOutboxPoller> outboxPollerProvider,
       ObjectProvider<FcmStreamConsumer> streamConsumerProvider,
       ObjectProvider<FcmQueueMetrics> queueMetricsProvider,
-      NotificationWorkerReadiness readiness) {
+      @Value("${fcm.notifications.enabled:false}") boolean notificationsEnabled) {
     this.streamStoreProvider = streamStoreProvider;
     this.outboxPollerProvider = outboxPollerProvider;
     this.streamConsumerProvider = streamConsumerProvider;
     this.queueMetricsProvider = queueMetricsProvider;
-    this.readiness = readiness;
+    this.ready = new AtomicBoolean(!notificationsEnabled);
   }
 
   @EventListener(ApplicationReadyEvent.class)
@@ -73,7 +77,7 @@ public class NotificationWorkerLifecycle {
                   }
                   streamConsumer.start();
                   outboxPoller.start();
-                  readiness.markReady();
+                  ready.set(true);
                   log.info("알림 워커가 소비자 그룹을 준비하고 처리를 시작했습니다.");
                 })
             .subscribe();
@@ -82,7 +86,7 @@ public class NotificationWorkerLifecycle {
   @EventListener(ContextClosedEvent.class)
   public synchronized void stop() {
     started = false;
-    readiness.markNotReady();
+    ready.set(false);
     if (startupSubscription != null) {
       startupSubscription.dispose();
       startupSubscription = null;
@@ -99,5 +103,12 @@ public class NotificationWorkerLifecycle {
     if (streamConsumer != null) {
       streamConsumer.stop();
     }
+  }
+
+  @Override
+  public Health health() {
+    return ready.get()
+        ? Health.up().build()
+        : Health.outOfService().withDetail("reason", "알림 소비자 그룹이 준비되지 않았습니다").build();
   }
 }
