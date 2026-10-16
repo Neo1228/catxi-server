@@ -1,10 +1,10 @@
 package com.catxi.notification.fcm.service;
 
+import com.catxi.chat.contract.ChatPresenceKeys;
 import com.catxi.common.api.exception.CatxiException;
 import com.catxi.member.domain.Member;
 import com.catxi.member.error.MemberErrorCode;
 import com.catxi.member.repository.MemberRepository;
-import com.catxi.notification.contract.ChatPresenceKeys;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;

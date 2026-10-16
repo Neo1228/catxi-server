@@ -1,4 +1,4 @@
-package com.catxi.notification.contract;
+package com.catxi.chat.contract;
 
 import java.time.Duration;
 
