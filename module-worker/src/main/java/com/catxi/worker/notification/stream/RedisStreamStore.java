@@ -1,4 +1,4 @@
-package com.catxi.worker.stream;
+package com.catxi.worker.notification.stream;
 
 import java.util.List;
 import java.util.Map;
@@ -26,8 +26,8 @@ public class RedisStreamStore {
             if existing then
                 return existing
             end
-            local messageId = redis.call('XADD', KEYS[1], '*', 'payload', ARGV[1])
-            redis.call('SET', KEYS[2], messageId, 'EX', ARGV[2])
+            local messageId = redis.call('XADD', KEYS[1], '*', 'event_id', ARGV[1], 'payload', ARGV[2])
+            redis.call('SET', KEYS[2], messageId, 'EX', ARGV[3])
             return messageId
             """;
   private static final RedisScript<String> OUTBOX_PUBLISH_SCRIPT =
@@ -115,11 +115,12 @@ public class RedisStreamStore {
     return "true".equals(record.getValue().get(BOOTSTRAP_FIELD));
   }
 
-  public Mono<String> publishOutbox(String eventId, String payload) {
+  public Mono<String> publishOutbox(String publicationKey, String eventId, String payload) {
     return redisTemplate
         .execute(
             OUTBOX_PUBLISH_SCRIPT,
-            List.of(streamName, IDEMPOTENCY_KEY_PREFIX + eventId),
+            List.of(streamName, IDEMPOTENCY_KEY_PREFIX + publicationKey),
+            eventId,
             payload,
             Long.toString(idempotencyTtlSeconds))
         .single()

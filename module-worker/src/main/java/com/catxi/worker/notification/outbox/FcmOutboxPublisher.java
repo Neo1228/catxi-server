@@ -1,7 +1,7 @@
-package com.catxi.worker.outbox;
+package com.catxi.worker.notification.outbox;
 
-import com.catxi.worker.deadletter.DeadLetterRepository;
-import com.catxi.worker.stream.RedisStreamStore;
+import com.catxi.worker.notification.deadletter.DeadLetterRepository;
+import com.catxi.worker.notification.stream.RedisStreamStore;
 import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,12 +44,16 @@ public class FcmOutboxPublisher {
   }
 
   public Mono<Void> publish(ClaimedFcmOutboxEvent event, String leaseOwner) {
+    String publicationKey =
+        event.eventId()
+            + ":"
+            + (event.publicationKey() == null ? "initial" : event.publicationKey());
     return streamStore
-        .publishOutbox(event.eventId(), event.payload())
+        .publishOutbox(publicationKey, event.eventId(), event.payload())
         .flatMap(
             messageId ->
                 outboxRepository
-                    .markSent(event.id(), leaseOwner)
+                    .markPublished(event.id(), leaseOwner)
                     .doOnNext(
                         rows -> {
                           if (rows == 0) {
@@ -67,7 +71,7 @@ public class FcmOutboxPublisher {
       ClaimedFcmOutboxEvent event, String leaseOwner, Throwable failure) {
     int nextRetryCount = Math.incrementExact(event.retryCount());
     String errorMessage = describe(failure);
-    if (nextRetryCount <= maxRetries) {
+    if ("PUBLISHED".equals(event.status()) || nextRetryCount <= maxRetries) {
       int delaySeconds = retryDelaySeconds(nextRetryCount);
       return outboxRepository
           .scheduleRetry(event.id(), leaseOwner, nextRetryCount, delaySeconds, errorMessage)

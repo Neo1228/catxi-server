@@ -1,8 +1,7 @@
-package com.catxi.worker.notification;
+package com.catxi.worker.notification.delivery;
 
-import com.catxi.notification.contract.ChatPresenceKeys;
-import com.catxi.notification.contract.FcmNotificationEvent;
-import com.catxi.notification.contract.FcmNotificationEvent.NotificationType;
+import com.catxi.worker.notification.event.FcmNotificationEvent;
+import com.catxi.worker.notification.event.FcmNotificationEvent.NotificationType;
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutureCallback;
 import com.google.api.core.ApiFutures;
@@ -74,16 +73,31 @@ public class NotificationDeliveryService {
                         REDIS_LOOKUP_CONCURRENCY)
                     .collectList()
                     .flatMap(
-                        targets ->
-                            targets.isEmpty()
-                                ? Mono.just(DeliveryOutcome.completed())
-                                : sendBatch(
-                                    event,
-                                    targets.stream()
-                                        .map(
-                                            target ->
-                                                new MemberToken(target.memberId(), target.token()))
-                                        .toList())))
+                        targets -> {
+                          List<FcmTarget> registeredTargets = new ArrayList<>();
+                          Map<Long, String> missingRegistrations = new LinkedHashMap<>();
+                          for (FcmRecipientRepository.Recipient target : targets) {
+                            if (target.fid() != null && !target.fid().isBlank()) {
+                              registeredTargets.add(
+                                  new FcmTarget(target.memberId(), target.fid(), TargetType.FID));
+                            } else if (target.token() != null && !target.token().isBlank()) {
+                              registeredTargets.add(
+                                  new FcmTarget(
+                                      target.memberId(), target.token(), TargetType.TOKEN));
+                            } else {
+                              missingRegistrations.put(
+                                  target.memberId(), "missing_fcm_registration");
+                            }
+                          }
+
+                          DeliveryOutcome missingOutcome =
+                              new DeliveryOutcome(List.of(), missingRegistrations);
+                          if (registeredTargets.isEmpty()) {
+                            return Mono.just(missingOutcome);
+                          }
+                          return sendBatch(event, registeredTargets)
+                              .map(outcome -> combine(List.of(missingOutcome, outcome)));
+                        }))
         .collectList()
         .map(this::combine);
   }
@@ -114,16 +128,34 @@ public class NotificationDeliveryService {
             });
   }
 
-  private Mono<DeliveryOutcome> sendBatch(FcmNotificationEvent event, List<MemberToken> targets) {
+  private Mono<DeliveryOutcome> sendBatch(FcmNotificationEvent event, List<FcmTarget> targets) {
+    List<FcmTarget> tokenTargets =
+        targets.stream().filter(target -> target.type() == TargetType.TOKEN).toList();
+    List<FcmTarget> fidTargets =
+        targets.stream().filter(target -> target.type() == TargetType.FID).toList();
+    return Flux.concat(
+            sendTargetBatch(event, tokenTargets, TargetType.TOKEN),
+            sendTargetBatch(event, fidTargets, TargetType.FID))
+        .collectList()
+        .map(this::combine);
+  }
+
+  private Mono<DeliveryOutcome> sendTargetBatch(
+      FcmNotificationEvent event, List<FcmTarget> targets, TargetType targetType) {
+    if (targets.isEmpty()) {
+      return Mono.just(DeliveryOutcome.completed());
+    }
     Map<String, String> data = new LinkedHashMap<>(event.data());
     data.put("eventId", event.eventId());
     data.put("title", event.title());
     data.put("body", event.body());
-    MulticastMessage message =
-        MulticastMessage.builder()
-            .addAllTokens(targets.stream().map(MemberToken::token).toList())
-            .putAllData(data)
-            .build();
+    MulticastMessage.Builder messageBuilder = MulticastMessage.builder();
+    if (targetType == TargetType.FID) {
+      messageBuilder.addAllFids(targets.stream().map(FcmTarget::identifier).toList());
+    } else {
+      messageBuilder.addAllTokens(targets.stream().map(FcmTarget::identifier).toList());
+    }
+    MulticastMessage message = messageBuilder.putAllData(data).build();
 
     return sendAsync(message)
         .flatMap(response -> classifyResponse(targets, response))
@@ -159,15 +191,14 @@ public class NotificationDeliveryService {
         });
   }
 
-  private Mono<DeliveryOutcome> classifyResponse(
-      List<MemberToken> targets, BatchResponse response) {
+  private Mono<DeliveryOutcome> classifyResponse(List<FcmTarget> targets, BatchResponse response) {
     List<Long> retryMemberIds = new ArrayList<>();
     Map<Long, String> terminalFailures = new LinkedHashMap<>();
-    List<MemberToken> expiredTokens = new ArrayList<>();
+    List<FcmTarget> expiredTargets = new ArrayList<>();
     List<SendResponse> responses = response.getResponses();
 
     if (responses.size() != targets.size()) {
-      return Mono.just(retryAll(targets, new IllegalStateException("FCM 응답 수가 요청 토큰 수와 다릅니다")));
+      return Mono.just(retryAll(targets, new IllegalStateException("FCM 응답 수가 요청 대상 수와 다릅니다")));
     }
 
     for (int index = 0; index < responses.size(); index++) {
@@ -176,11 +207,11 @@ public class NotificationDeliveryService {
         continue;
       }
 
-      MemberToken target = targets.get(index);
+      FcmTarget target = targets.get(index);
       FirebaseMessagingException exception = sendResponse.getException();
       MessagingErrorCode code = exception == null ? null : exception.getMessagingErrorCode();
       if (code == MessagingErrorCode.UNREGISTERED) {
-        expiredTokens.add(target);
+        expiredTargets.add(target);
       } else if (code == MessagingErrorCode.INVALID_ARGUMENT) {
         terminalFailures.put(target.memberId(), describe(exception));
       } else {
@@ -188,17 +219,22 @@ public class NotificationDeliveryService {
       }
     }
 
-    return Flux.fromIterable(expiredTokens)
+    return Flux.fromIterable(expiredTargets)
         .concatMap(
-            target ->
-                recipientRepository
-                    .clearExpiredToken(target.memberId(), target.token())
-                    .map(cleared -> new TokenCleanupResult(target, cleared))
-                    .onErrorResume(error -> Mono.just(new TokenCleanupResult(target, false))))
+            target -> {
+              Mono<Boolean> clearResult =
+                  target.type() == TargetType.FID
+                      ? recipientRepository.clearExpiredFid(target.memberId(), target.identifier())
+                      : recipientRepository.clearExpiredToken(
+                          target.memberId(), target.identifier());
+              return clearResult
+                  .map(cleared -> new CleanupResult(target, cleared))
+                  .onErrorResume(error -> Mono.just(new CleanupResult(target, false)));
+            })
         .collectList()
         .map(
             cleanups -> {
-              for (TokenCleanupResult cleanup : cleanups) {
+              for (CleanupResult cleanup : cleanups) {
                 if (!cleanup.cleared()) {
                   retryMemberIds.add(cleanup.target().memberId());
                 }
@@ -207,13 +243,13 @@ public class NotificationDeliveryService {
             });
   }
 
-  private DeliveryOutcome retryAll(List<MemberToken> targets, Throwable error) {
+  private DeliveryOutcome retryAll(List<FcmTarget> targets, Throwable error) {
     log.warn(
         "FCM 배치 전송을 재시도합니다: targetCount={}, errorType={}",
         targets.size(),
         error.getClass().getSimpleName());
     return new DeliveryOutcome(
-        distinct(targets.stream().map(MemberToken::memberId).toList()), Map.of());
+        distinct(targets.stream().map(FcmTarget::memberId).toList()), Map.of());
   }
 
   private DeliveryOutcome combine(List<DeliveryOutcome> outcomes) {
@@ -238,7 +274,12 @@ public class NotificationDeliveryService {
     return message.length() > 1000 ? message.substring(0, 1000) : message;
   }
 
-  private record MemberToken(long memberId, String token) {}
+  private enum TargetType {
+    TOKEN,
+    FID
+  }
 
-  private record TokenCleanupResult(MemberToken target, boolean cleared) {}
+  private record FcmTarget(long memberId, String identifier, TargetType type) {}
+
+  private record CleanupResult(FcmTarget target, boolean cleared) {}
 }

@@ -48,7 +48,7 @@ management:
       show-details: never
       group:
         readiness:
-          include: readinessState,r2dbc,redis
+          include: readinessState,r2dbc,redis,notificationWorker
         liveness:
           include: livenessState
   metrics:
@@ -72,6 +72,7 @@ fcm:
     poll-interval: 1s
     publish-concurrency: 8
     lease-duration: 2m
+    acknowledgement-timeout: 5m
     max-retries: 10
     retry-base-delay: 2s
     retry-max-delay: 5m
@@ -85,7 +86,7 @@ fcm:
     concurrency: ${FCM_STREAM_CONCURRENCY:8}
     claim-min-idle-time: ${FCM_STREAM_CLAIM_MIN_IDLE_TIME:5m}
     reclaim-interval: 30s
-    reclaim-page-size: 500
+    reclaim-page-size: ${FCM_STREAM_RECLAIM_PAGE_SIZE:8}
     processing-timeout: 2m
     retry-base-delay: 1s
     retry-max-delay: 30s

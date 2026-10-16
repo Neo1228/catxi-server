@@ -1,9 +1,10 @@
-package com.catxi.worker.stream;
+package com.catxi.worker.notification.stream;
 
-import com.catxi.notification.contract.FcmNotificationEvent;
-import com.catxi.worker.deadletter.DeadLetterRepository;
-import com.catxi.worker.notification.DeliveryOutcome;
-import com.catxi.worker.notification.NotificationDeliveryService;
+import com.catxi.worker.notification.deadletter.DeadLetterRepository;
+import com.catxi.worker.notification.delivery.DeliveryOutcome;
+import com.catxi.worker.notification.delivery.NotificationDeliveryService;
+import com.catxi.worker.notification.event.FcmNotificationEvent;
+import com.catxi.worker.notification.outbox.FcmOutboxRepository;
 import java.net.InetAddress;
 import java.time.Duration;
 import java.util.LinkedHashSet;
@@ -48,6 +49,7 @@ public class FcmStreamConsumer {
   private final ReactiveStringRedisTemplate redisTemplate;
   private final RedisStreamStore streamStore;
   private final NotificationDeliveryService deliveryService;
+  private final FcmOutboxRepository outboxRepository;
   private final DeadLetterRepository deadLetterRepository;
   private final JsonMapper objectMapper;
   private final String consumerName = createConsumerName();
@@ -72,6 +74,7 @@ public class FcmStreamConsumer {
       ReactiveStringRedisTemplate redisTemplate,
       RedisStreamStore streamStore,
       NotificationDeliveryService deliveryService,
+      FcmOutboxRepository outboxRepository,
       DeadLetterRepository deadLetterRepository,
       JsonMapper objectMapper,
       @Value("${fcm.stream.poll-timeout}") Duration pollTimeout,
@@ -88,6 +91,7 @@ public class FcmStreamConsumer {
     this.redisTemplate = redisTemplate;
     this.streamStore = streamStore;
     this.deliveryService = deliveryService;
+    this.outboxRepository = outboxRepository;
     this.deadLetterRepository = deadLetterRepository;
     this.objectMapper = objectMapper;
     this.pollTimeout = pollTimeout;
@@ -97,8 +101,9 @@ public class FcmStreamConsumer {
     this.retryBaseDelay = retryBaseDelay;
     this.retryMaxDelay = retryMaxDelay;
     this.readBatchSize = Math.max(1, readBatchSize);
-    this.reclaimPageSize = Math.max(1, reclaimPageSize);
     this.concurrency = Math.max(1, concurrency);
+    // 선점한 이벤트가 처리 동시성보다 많으면 아직 처리하지 않은 항목이 다른 워커에 다시 회수될 수 있습니다.
+    this.reclaimPageSize = Math.max(1, Math.min(reclaimPageSize, this.concurrency));
     this.maxRetries = Math.max(0, maxRetries);
   }
 
@@ -171,37 +176,67 @@ public class FcmStreamConsumer {
       return streamStore.acknowledgeAndDelete(messageId);
     }
 
-    String payload = record.getValue().get("payload");
-    if (payload == null || payload.isBlank()) {
-      return deadLetterAndAcknowledge(messageId, null, payload, "Redis Stream payload가 없습니다", 0);
-    }
-
-    FcmNotificationEvent event;
-    try {
-      String eventPayload = payload;
-      if (payload.stripLeading().startsWith("\"")) {
-        eventPayload = objectMapper.readValue(payload, String.class);
+    String eventId = record.getValue().get("event_id");
+    if (eventId == null || eventId.isBlank()) {
+      String streamPayload = record.getValue().get("payload");
+      if (streamPayload == null || streamPayload.isBlank()) {
+        return deadLetterAndAcknowledge(
+            messageId, messageId, streamPayload, "Redis Stream 이벤트 ID가 없습니다", 0);
       }
-      event = objectMapper.readValue(eventPayload, FcmNotificationEvent.class);
-      validate(event);
-    } catch (Exception error) {
-      return deadLetterAndAcknowledge(messageId, null, payload, describe(error), 0);
+      try {
+        eventId = extractEventId(streamPayload);
+      } catch (Exception error) {
+        return deadLetterAndAcknowledge(messageId, messageId, streamPayload, describe(error), 0);
+      }
     }
 
-    return deliveryService
-        .deliver(event)
-        .timeout(processingTimeout)
-        .onErrorResume(
-            error ->
-                recoverDeliveryFailure(messageId, payload, event, error)
-                    .then(Mono.<DeliveryOutcome>empty()))
-        .flatMap(outcome -> handleOutcome(messageId, payload, event, outcome))
+    if (eventId == null || eventId.isBlank()) {
+      return deadLetterAndAcknowledge(
+          messageId, messageId, record.getValue().get("payload"), "FCM 아웃박스 이벤트 ID가 비었습니다", 0);
+    }
+
+    String notificationEventId = eventId;
+    // 재시도 발행에 실패하면 Redis pending 본문이 이전 값일 수 있어 DB 아웃박스를 기준으로 처리합니다.
+    return outboxRepository
+        .findActivePayload(notificationEventId)
+        .flatMap(
+            payload -> {
+              FcmNotificationEvent event;
+              try {
+                String eventPayload = payload;
+                if (payload.stripLeading().startsWith("\"")) {
+                  eventPayload = objectMapper.readValue(payload, String.class);
+                }
+                event = objectMapper.readValue(eventPayload, FcmNotificationEvent.class);
+                validate(event);
+                if (!notificationEventId.equals(event.eventId())) {
+                  throw new IllegalArgumentException("FCM 아웃박스 이벤트 ID가 일치하지 않습니다");
+                }
+              } catch (Exception error) {
+                return deadLetterAndAcknowledge(
+                        messageId, notificationEventId, payload, describe(error), 0)
+                    .thenReturn(true);
+              }
+
+              return deliveryService
+                  .deliver(event)
+                  .timeout(processingTimeout)
+                  .onErrorResume(
+                      error ->
+                          recoverDeliveryFailure(messageId, payload, event, error)
+                              .then(Mono.<DeliveryOutcome>empty()))
+                  .flatMap(outcome -> handleOutcome(messageId, payload, event, outcome))
+                  .thenReturn(true);
+            })
+        .defaultIfEmpty(false)
+        .flatMap(
+            active -> active ? Mono.<Void>empty() : streamStore.acknowledgeAndDelete(messageId))
         .onErrorResume(
             error -> {
               log.error(
                   "FCM 이벤트 처리가 완료되지 않아 pending 상태로 둡니다: messageId={}, eventId={}",
                   messageId,
-                  event.eventId(),
+                  notificationEventId,
                   error);
               return Mono.empty();
             });
@@ -224,7 +259,10 @@ public class FcmStreamConsumer {
     return serialize(retryEvent)
         .flatMap(
             retryPayload ->
-                Mono.delay(retryDelay(event.retryCount()))
+                outboxRepository
+                    .deferRepublish(
+                        event.eventId(), retryPayload, retryDelay(event.retryCount()).toSeconds())
+                    .then(Mono.delay(retryDelay(event.retryCount())))
                     .then(streamStore.publishRetryAndAcknowledge(retryPayload, messageId))
                     .then());
   }
@@ -236,7 +274,9 @@ public class FcmStreamConsumer {
 
     if (retryMemberIds.isEmpty()) {
       if (terminalFailures.isEmpty()) {
-        return streamStore.acknowledgeAndDelete(messageId);
+        return outboxRepository
+            .markDelivered(event.eventId())
+            .then(streamStore.acknowledgeAndDelete(messageId));
       }
       FcmNotificationEvent failedEvent = withTargets(event, List.copyOf(terminalFailures.keySet()));
       return serialize(failedEvent)
@@ -248,6 +288,7 @@ public class FcmStreamConsumer {
                       failedPayload,
                       terminalFailures.toString(),
                       event.retryCount()))
+          .then(outboxRepository.markDeliveryFailed(event.eventId(), terminalFailures.toString()))
           .then(streamStore.acknowledgeAndDelete(messageId));
     }
 
@@ -262,6 +303,7 @@ public class FcmStreamConsumer {
               failedPayload ->
                   deadLetterRepository.save(
                       messageId, event.eventId(), failedPayload, failure, event.retryCount()))
+          .then(outboxRepository.markDeliveryFailed(event.eventId(), failure))
           .then(streamStore.acknowledgeAndDelete(messageId));
     }
 
@@ -283,6 +325,11 @@ public class FcmStreamConsumer {
         .flatMap(
             retryPayload ->
                 persistTerminalFailures
+                    .then(
+                        outboxRepository.deferRepublish(
+                            event.eventId(),
+                            retryPayload,
+                            retryDelay(event.retryCount()).toSeconds()))
                     .then(Mono.delay(retryDelay(event.retryCount())))
                     .then(streamStore.publishRetryAndAcknowledge(retryPayload, messageId))
                     .then());
@@ -290,9 +337,25 @@ public class FcmStreamConsumer {
 
   private Mono<Void> deadLetterAndAcknowledge(
       String messageId, String eventId, String payload, String error, int retryCount) {
+    Mono<Void> markFailed =
+        eventId == null ? Mono.empty() : outboxRepository.markDeliveryFailed(eventId, error).then();
     return deadLetterRepository
         .save(messageId, eventId, payload, error, retryCount)
+        .then(markFailed)
         .then(streamStore.acknowledgeAndDelete(messageId));
+  }
+
+  private String extractEventId(String payload) {
+    try {
+      String eventPayload = payload;
+      if (payload.stripLeading().startsWith("\"")) {
+        eventPayload = objectMapper.readValue(payload, String.class);
+      }
+      var eventId = objectMapper.readTree(eventPayload).get("eventId");
+      return eventId == null ? null : eventId.asString(null);
+    } catch (Exception ignored) {
+      return null;
+    }
   }
 
   private Mono<String> serialize(FcmNotificationEvent event) {
@@ -355,7 +418,7 @@ public class FcmStreamConsumer {
               }
               return claimPendingPages(null);
             })
-        .concatMap(this::processRecord);
+        .flatMap(this::processRecord, concurrency, 1);
   }
 
   private Flux<MapRecord<String, String, String>> claimPendingPages(String cursor) {

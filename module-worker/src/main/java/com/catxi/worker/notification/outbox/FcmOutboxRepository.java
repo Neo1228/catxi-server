@@ -1,4 +1,4 @@
-package com.catxi.worker.outbox;
+package com.catxi.worker.notification.outbox;
 
 import java.util.List;
 import java.util.Objects;
@@ -17,9 +17,10 @@ public class FcmOutboxRepository {
 
   private static final String CLAIM_SQL =
       """
-      SELECT id, event_id, event_type, CAST(payload AS CHAR) AS payload, retry_count
+      SELECT id, event_id, event_type, CAST(payload AS CHAR) AS payload, retry_count, status,
+             DATE_FORMAT(next_attempt_at, '%Y%m%d%H%i%s%f') AS publication_key
       FROM fcm_outbox
-      WHERE status = 'PENDING'
+      WHERE status IN ('PENDING', 'PUBLISHED')
         AND (next_attempt_at IS NULL OR next_attempt_at <= CURRENT_TIMESTAMP(6))
         AND (lease_until IS NULL OR lease_until <= CURRENT_TIMESTAMP(6))
       ORDER BY next_attempt_at, created_at, id
@@ -30,14 +31,18 @@ public class FcmOutboxRepository {
   private final DatabaseClient databaseClient;
   private final TransactionalOperator transactionOperator;
   private final int leaseSeconds;
+  private final int acknowledgementTimeoutSeconds;
 
   public FcmOutboxRepository(
       DatabaseClient databaseClient,
       TransactionalOperator transactionOperator,
-      @Value("${fcm.outbox.lease-duration}") java.time.Duration leaseDuration) {
+      @Value("${fcm.outbox.lease-duration}") java.time.Duration leaseDuration,
+      @Value("${fcm.outbox.acknowledgement-timeout}") java.time.Duration acknowledgementTimeout) {
     this.databaseClient = databaseClient;
     this.transactionOperator = transactionOperator;
     this.leaseSeconds = Math.toIntExact(Math.max(1, leaseDuration.toSeconds()));
+    this.acknowledgementTimeoutSeconds =
+        Math.toIntExact(Math.max(leaseSeconds, acknowledgementTimeout.toSeconds()));
   }
 
   public Mono<List<ClaimedFcmOutboxEvent>> claimBatch(String leaseOwner, int batchSize) {
@@ -53,7 +58,9 @@ public class FcmOutboxRepository {
                         Objects.requireNonNull(row.get("event_id", String.class)),
                         Objects.requireNonNull(row.get("event_type", String.class)),
                         Objects.requireNonNull(row.get("payload", String.class)),
-                        Objects.requireNonNullElse(row.get("retry_count", Integer.class), 0)))
+                        Objects.requireNonNullElse(row.get("retry_count", Integer.class), 0),
+                        Objects.requireNonNull(row.get("status", String.class)),
+                        row.get("publication_key", String.class)))
             .all()
             .collectList()
             .flatMap(
@@ -86,7 +93,7 @@ public class FcmOutboxRepository {
                 UPDATE fcm_outbox
                 SET lease_owner = :leaseOwner,
                     lease_until = TIMESTAMPADD(SECOND, :leaseSeconds, CURRENT_TIMESTAMP(6))
-                WHERE status = 'PENDING' AND id IN (%s)
+                WHERE status IN ('PENDING', 'PUBLISHED') AND id IN (%s)
                 """
                     .formatted(idParameters))
             .bind("leaseOwner", leaseOwner)
@@ -97,17 +104,88 @@ public class FcmOutboxRepository {
     return statement.fetch().rowsUpdated();
   }
 
-  public Mono<Long> markSent(long id, String leaseOwner) {
+  public Mono<Long> markPublished(long id, String leaseOwner) {
     return databaseClient
         .sql(
             """
             UPDATE fcm_outbox
-            SET status = 'SENT', sent_at = CURRENT_TIMESTAMP(6), failed_at = NULL,
-                error_message = NULL, lease_owner = NULL, lease_until = NULL
-            WHERE id = :id AND status = 'PENDING' AND lease_owner = :leaseOwner
+            SET status = 'PUBLISHED',
+                next_attempt_at = GREATEST(
+                    COALESCE(next_attempt_at, CURRENT_TIMESTAMP(6)),
+                    TIMESTAMPADD(SECOND, :acknowledgementTimeoutSeconds, CURRENT_TIMESTAMP(6))),
+                failed_at = NULL, error_message = NULL, lease_owner = NULL, lease_until = NULL
+            WHERE id = :id AND status IN ('PENDING', 'PUBLISHED') AND lease_owner = :leaseOwner
             """)
         .bind("id", id)
         .bind("leaseOwner", leaseOwner)
+        .bind("acknowledgementTimeoutSeconds", acknowledgementTimeoutSeconds)
+        .fetch()
+        .rowsUpdated();
+  }
+
+  public Mono<Long> deferRepublish(String eventId, String payload, long retryDelaySeconds) {
+    long delaySeconds = Math.addExact((long) acknowledgementTimeoutSeconds, retryDelaySeconds);
+    return databaseClient
+        .sql(
+            """
+            UPDATE fcm_outbox
+            SET payload = CAST(:payload AS JSON),
+                next_attempt_at = GREATEST(
+                COALESCE(next_attempt_at, CURRENT_TIMESTAMP(6)),
+                TIMESTAMPADD(SECOND, :delaySeconds, CURRENT_TIMESTAMP(6)))
+            WHERE event_id = :eventId AND status IN ('PENDING', 'PUBLISHED')
+            """)
+        .bind("delaySeconds", delaySeconds)
+        .bind("eventId", eventId)
+        .bind("payload", payload)
+        .fetch()
+        .rowsUpdated()
+        .flatMap(
+            updatedRows ->
+                updatedRows == 1
+                    ? Mono.just(updatedRows)
+                    : Mono.error(
+                        new IllegalStateException("FCM 아웃박스 재시도 상태를 갱신하지 못했습니다: " + eventId)));
+  }
+
+  public Mono<String> findActivePayload(String eventId) {
+    return databaseClient
+        .sql(
+            """
+            SELECT CAST(payload AS CHAR) AS payload
+            FROM fcm_outbox
+            WHERE event_id = :eventId AND status IN ('PENDING', 'PUBLISHED')
+            """)
+        .bind("eventId", eventId)
+        .map((row, metadata) -> Objects.requireNonNull(row.get("payload", String.class)))
+        .one();
+  }
+
+  public Mono<Long> markDelivered(String eventId) {
+    return databaseClient
+        .sql(
+            """
+            UPDATE fcm_outbox
+            SET status = 'SENT', sent_at = CURRENT_TIMESTAMP(6), next_attempt_at = CURRENT_TIMESTAMP(6),
+                failed_at = NULL, error_message = NULL, lease_owner = NULL, lease_until = NULL
+            WHERE event_id = :eventId AND status IN ('PENDING', 'PUBLISHED')
+            """)
+        .bind("eventId", eventId)
+        .fetch()
+        .rowsUpdated();
+  }
+
+  public Mono<Long> markDeliveryFailed(String eventId, String errorMessage) {
+    return databaseClient
+        .sql(
+            """
+            UPDATE fcm_outbox
+            SET status = 'FAILED', failed_at = CURRENT_TIMESTAMP(6), next_attempt_at = CURRENT_TIMESTAMP(6),
+                error_message = :errorMessage, lease_owner = NULL, lease_until = NULL
+            WHERE event_id = :eventId AND status IN ('PENDING', 'PUBLISHED')
+            """)
+        .bind("eventId", eventId)
+        .bind("errorMessage", errorMessage)
         .fetch()
         .rowsUpdated();
   }
@@ -122,7 +200,7 @@ public class FcmOutboxRepository {
                 next_attempt_at = TIMESTAMPADD(SECOND, :delaySeconds, CURRENT_TIMESTAMP(6)),
                 error_message = :errorMessage,
                 lease_owner = NULL, lease_until = NULL
-            WHERE id = :id AND status = 'PENDING' AND lease_owner = :leaseOwner
+            WHERE id = :id AND status IN ('PENDING', 'PUBLISHED') AND lease_owner = :leaseOwner
             """)
         .bind("retryCount", retryCount)
         .bind("delaySeconds", delaySeconds)
@@ -141,7 +219,7 @@ public class FcmOutboxRepository {
             SET status = 'FAILED', failed_at = CURRENT_TIMESTAMP(6), retry_count = :retryCount,
                 error_message = :errorMessage,
                 lease_owner = NULL, lease_until = NULL
-            WHERE id = :id AND status = 'PENDING' AND lease_owner = :leaseOwner
+            WHERE id = :id AND status IN ('PENDING', 'PUBLISHED') AND lease_owner = :leaseOwner
             """)
         .bind("retryCount", retryCount)
         .bind("errorMessage", errorMessage)

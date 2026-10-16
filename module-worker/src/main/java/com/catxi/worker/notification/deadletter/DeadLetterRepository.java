@@ -1,4 +1,4 @@
-package com.catxi.worker.deadletter;
+package com.catxi.worker.notification.deadletter;
 
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Repository;

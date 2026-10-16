@@ -1,4 +1,4 @@
-package com.catxi.worker.notification;
+package com.catxi.worker.notification.delivery;
 
 import java.util.List;
 import org.springframework.r2dbc.core.DatabaseClient;
@@ -23,11 +23,9 @@ public class FcmRecipientRepository {
     StringBuilder sql =
         new StringBuilder(
             """
-            SELECT id, fcm_token
+            SELECT id, fcm_token, fcm_fid
             FROM member
             WHERE status = 'ACTIVE'
-              AND fcm_token IS NOT NULL
-              AND TRIM(fcm_token) <> ''
               AND id IN (
             """);
     for (int index = 0; index < memberIds.size(); index++) {
@@ -46,7 +44,10 @@ public class FcmRecipientRepository {
     return query
         .map(
             (row, metadata) ->
-                new Recipient(row.get("id", Long.class), row.get("fcm_token", String.class)))
+                new Recipient(
+                    row.get("id", Long.class),
+                    row.get("fcm_token", String.class),
+                    row.get("fcm_fid", String.class)))
         .all();
   }
 
@@ -67,5 +68,21 @@ public class FcmRecipientRepository {
         .map(updatedRows -> updatedRows > 0);
   }
 
-  public record Recipient(long memberId, String token) {}
+  Mono<Boolean> clearExpiredFid(long memberId, String fid) {
+    return databaseClient
+        .sql(
+            """
+            UPDATE member
+            SET fcm_fid = NULL, fcm_fid_updated_at = NULL
+            WHERE id = :memberId
+              AND CAST(fcm_fid AS BINARY) = CAST(:fid AS BINARY)
+            """)
+        .bind("memberId", memberId)
+        .bind("fid", fid)
+        .fetch()
+        .rowsUpdated()
+        .map(updatedRows -> updatedRows > 0);
+  }
+
+  public record Recipient(long memberId, String token, String fid) {}
 }

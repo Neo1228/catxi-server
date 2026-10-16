@@ -1,6 +1,6 @@
-package com.catxi.worker.deadletter;
+package com.catxi.worker.notification.deadletter;
 
-import com.catxi.worker.deadletter.FcmDeadLetterReplayService.ReplayResult;
+import com.catxi.worker.notification.deadletter.FcmDeadLetterReplayService.ReplayResult;
 import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

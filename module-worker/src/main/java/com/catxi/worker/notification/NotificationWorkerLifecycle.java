@@ -1,9 +1,9 @@
-package com.catxi.worker;
+package com.catxi.worker.notification;
 
-import com.catxi.worker.metrics.FcmQueueMetrics;
-import com.catxi.worker.outbox.FcmOutboxPoller;
-import com.catxi.worker.stream.FcmStreamConsumer;
-import com.catxi.worker.stream.RedisStreamStore;
+import com.catxi.worker.notification.metrics.FcmQueueMetrics;
+import com.catxi.worker.notification.outbox.FcmOutboxPoller;
+import com.catxi.worker.notification.stream.FcmStreamConsumer;
+import com.catxi.worker.notification.stream.RedisStreamStore;
 import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,26 +16,29 @@ import reactor.core.Disposable;
 import reactor.util.retry.Retry;
 
 @Component
-public class WorkerLifecycle {
+public class NotificationWorkerLifecycle {
 
-  private static final Logger log = LoggerFactory.getLogger(WorkerLifecycle.class);
+  private static final Logger log = LoggerFactory.getLogger(NotificationWorkerLifecycle.class);
 
   private final ObjectProvider<RedisStreamStore> streamStoreProvider;
   private final ObjectProvider<FcmOutboxPoller> outboxPollerProvider;
   private final ObjectProvider<FcmStreamConsumer> streamConsumerProvider;
   private final ObjectProvider<FcmQueueMetrics> queueMetricsProvider;
+  private final NotificationWorkerReadiness readiness;
   private Disposable startupSubscription;
   private boolean started;
 
-  public WorkerLifecycle(
+  public NotificationWorkerLifecycle(
       ObjectProvider<RedisStreamStore> streamStoreProvider,
       ObjectProvider<FcmOutboxPoller> outboxPollerProvider,
       ObjectProvider<FcmStreamConsumer> streamConsumerProvider,
-      ObjectProvider<FcmQueueMetrics> queueMetricsProvider) {
+      ObjectProvider<FcmQueueMetrics> queueMetricsProvider,
+      NotificationWorkerReadiness readiness) {
     this.streamStoreProvider = streamStoreProvider;
     this.outboxPollerProvider = outboxPollerProvider;
     this.streamConsumerProvider = streamConsumerProvider;
     this.queueMetricsProvider = queueMetricsProvider;
+    this.readiness = readiness;
   }
 
   @EventListener(ApplicationReadyEvent.class)
@@ -70,6 +73,7 @@ public class WorkerLifecycle {
                   }
                   streamConsumer.start();
                   outboxPoller.start();
+                  readiness.markReady();
                   log.info("알림 워커가 소비자 그룹을 준비하고 처리를 시작했습니다.");
                 })
             .subscribe();
@@ -78,6 +82,7 @@ public class WorkerLifecycle {
   @EventListener(ContextClosedEvent.class)
   public synchronized void stop() {
     started = false;
+    readiness.markNotReady();
     if (startupSubscription != null) {
       startupSubscription.dispose();
       startupSubscription = null;
