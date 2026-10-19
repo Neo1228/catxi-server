@@ -1,5 +1,7 @@
 package com.catxi.chat.service;
 
+import com.catxi.chat.broadcast.message.ChatMessageBroadcast;
+import com.catxi.chat.broadcast.outbox.ChatMessageBroadcastOutboxService;
 import com.catxi.chat.domain.ChatMessage;
 import com.catxi.chat.domain.ChatRoom;
 import com.catxi.chat.domain.MessageType;
@@ -7,7 +9,6 @@ import com.catxi.chat.error.ChatMessageErrorCode;
 import com.catxi.chat.error.ChatParticipantErrorCode;
 import com.catxi.chat.error.ChatRoomErrorCode;
 import com.catxi.chat.event.ChatMessageNotificationRequested;
-import com.catxi.chat.event.ChatSystemMessageEvent;
 import com.catxi.chat.repository.ChatMessageRepository;
 import com.catxi.chat.repository.ChatParticipantRepository;
 import com.catxi.chat.repository.ChatRoomRepository;
@@ -41,6 +42,7 @@ public class ChatMessageService {
   private final MemberService memberService;
   private final ChatMessageRepository chatMessageRepository;
   private final ChatParticipantRepository chatParticipantRepository;
+  private final ChatMessageBroadcastOutboxService broadcastOutboxService;
   private final ApplicationEventPublisher eventPublisher;
 
   @Transactional
@@ -87,6 +89,14 @@ public class ChatMessageService {
             .build();
 
     ChatMessage savedMessage = chatMessageRepository.saveAndFlush(chatMsg);
+    broadcastOutboxService.enqueue(
+        new ChatMessageBroadcast(
+            room.getRoomId(),
+            sender.email(),
+            savedMessage.getContent(),
+            savedMessage.getCreatedTime(),
+            savedMessage.getId(),
+            savedMessage.getClientMessageId()));
 
     processChatFcmNotificationWithMessage(room, sender, savedMessage);
     return new ChatMessageSendResult(
@@ -229,9 +239,13 @@ public class ChatMessageService {
 
     ChatMessage savedMessage = chatMessageRepository.save(systemMsg);
 
-    eventPublisher.publishEvent(
-        new ChatSystemMessageEvent(
-            roomId, savedMessage.getId(), content, savedMessage.getCreatedTime()));
+    broadcastOutboxService.enqueue(
+        new ChatMessageBroadcast(
+            chatRoom.getRoomId(),
+            "[SYSTEM]",
+            savedMessage.getContent(),
+            savedMessage.getCreatedTime(),
+            savedMessage.getId()));
   }
 
   public record MessageView(
