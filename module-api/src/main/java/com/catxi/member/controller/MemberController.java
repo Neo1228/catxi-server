@@ -9,11 +9,11 @@ import com.catxi.member.service.MatchHistoryService;
 import com.catxi.member.service.MemberService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
-import java.net.URI;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -44,7 +44,7 @@ public class MemberController {
             request.getPassword(),
             request.getStudentNo(),
             request.getNickname());
-    return ResponseEntity.created(URI.create("/api/members/" + id)).body(new MemberIdResponse(id));
+    return ResponseEntity.status(HttpStatus.CREATED).body(new MemberIdResponse(id));
   }
 
   @Operation(summary = "닉네임으로 학번 조회")
