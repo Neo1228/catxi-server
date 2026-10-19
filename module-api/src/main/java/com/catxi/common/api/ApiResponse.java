@@ -1,7 +1,6 @@
 package com.catxi.common.api;
 
 import com.catxi.common.api.error.ErrorCode;
-import com.catxi.common.api.success.CommonSuccessCode;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -19,22 +18,22 @@ public class ApiResponse<T> {
 
   public static <T> ApiResponse<T> success(T data) {
     return new ApiResponse<>(
-        true, CommonSuccessCode.SUCCESS.getCode(), CommonSuccessCode.SUCCESS.getMessage(), data);
+        true, ApiSuccessCode.SUCCESS.getCode(), ApiSuccessCode.SUCCESS.getMessage(), data);
   }
 
   public static ApiResponse<Void> successWithNoData() {
     return new ApiResponse<>(
-        true, CommonSuccessCode.SUCCESS.getCode(), CommonSuccessCode.SUCCESS.getMessage(), null);
+        true, ApiSuccessCode.SUCCESS.getCode(), ApiSuccessCode.SUCCESS.getMessage(), null);
   }
 
   public static <T> ApiResponse<T> created(T data) {
     return new ApiResponse<>(
-        true, CommonSuccessCode.CREATED.getCode(), CommonSuccessCode.CREATED.getMessage(), data);
+        true, ApiSuccessCode.CREATED.getCode(), ApiSuccessCode.CREATED.getMessage(), data);
   }
 
   public static ApiResponse<Void> createdWithNoData() {
     return new ApiResponse<>(
-        true, CommonSuccessCode.CREATED.getCode(), CommonSuccessCode.CREATED.getMessage(), null);
+        true, ApiSuccessCode.CREATED.getCode(), ApiSuccessCode.CREATED.getMessage(), null);
   }
 
   public static ApiResponse<Void> failure(ErrorCode errorCode) {

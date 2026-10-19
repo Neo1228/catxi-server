@@ -1,7 +1,7 @@
 package com.catxi.member.service;
 
 import com.catxi.common.api.exception.CatxiException;
-import com.catxi.common.domain.Location;
+import com.catxi.common.domain.MeetingPoint;
 import com.catxi.member.domain.MatchHistory;
 import com.catxi.member.domain.Member;
 import com.catxi.member.error.MemberErrorCode;
@@ -32,8 +32,8 @@ public class MatchHistoryService {
   @Transactional(propagation = Propagation.MANDATORY)
   public void recordMatchedRoom(
       Long roomId,
-      Location startPoint,
-      Location endPoint,
+      MeetingPoint startPoint,
+      MeetingPoint endPoint,
       LocalDateTime matchedAt,
       List<MatchParticipant> participants) {
     if (participants.isEmpty()) {

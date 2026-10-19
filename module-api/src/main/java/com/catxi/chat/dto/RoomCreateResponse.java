@@ -1,13 +1,13 @@
 package com.catxi.chat.dto;
 
 import com.catxi.chat.domain.RoomStatus;
-import com.catxi.common.domain.Location;
+import com.catxi.common.domain.MeetingPoint;
 import java.time.LocalDateTime;
 
 public record RoomCreateResponse(
     Long roomId,
-    Location startPoint,
-    Location endPoint,
+    MeetingPoint startPoint,
+    MeetingPoint endPoint,
     Long recruitSize,
     LocalDateTime departAt,
     RoomStatus status) {}

@@ -1,6 +1,6 @@
 package com.catxi.chat.domain;
 
-import com.catxi.common.domain.Location;
+import com.catxi.common.domain.MeetingPoint;
 import com.catxi.common.persistence.BaseTimeEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -35,11 +35,11 @@ public class ChatRoom extends BaseTimeEntity {
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  private Location startPoint;
+  private MeetingPoint startPoint;
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  private Location endPoint;
+  private MeetingPoint endPoint;
 
   @Column(nullable = false)
   private LocalDateTime departAt;

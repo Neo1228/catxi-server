@@ -10,7 +10,7 @@ import com.catxi.chat.map.repository.CoordinateRepository;
 import com.catxi.chat.repository.ChatParticipantRepository;
 import com.catxi.chat.repository.ChatRoomRepository;
 import com.catxi.common.api.exception.CatxiException;
-import com.catxi.common.domain.Location;
+import com.catxi.common.domain.MeetingPoint;
 import com.catxi.member.service.MemberService;
 import com.catxi.member.service.MemberService.MemberChatProfile;
 import java.util.List;
@@ -136,5 +136,5 @@ public class MapService {
 
   private record RoomMember(ChatRoom room, MemberChatProfile member) {}
 
-  public record CoordinatesResult(Location departure, List<MapCoordinate> coordinates) {}
+  public record CoordinatesResult(MeetingPoint departure, List<MapCoordinate> coordinates) {}
 }

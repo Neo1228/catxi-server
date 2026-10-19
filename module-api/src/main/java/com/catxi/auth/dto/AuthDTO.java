@@ -15,4 +15,7 @@ public class AuthDTO {
       @NotBlank @Size(max = 72) String password) {}
 
   public static record LoginResponse(String token) {}
+
+  public static record KakaoSignupRequest(
+      @NotBlank String nickname, @JsonAlias("StudentNo") @NotBlank String studentNo) {}
 }

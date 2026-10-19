@@ -1,6 +1,6 @@
 package com.catxi.common.domain;
 
-public enum Location {
+public enum MeetingPoint {
   MARIA,
   LIBRARY,
   DASOL,

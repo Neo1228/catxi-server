@@ -38,7 +38,7 @@ public class KakaoOAuthClient {
     }
   }
 
-  public KakaoDTO.KakaoToken requestToken(String accessCode) {
+  public KakaoTokenResponse requestToken(String accessCode) {
     MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
     params.add("grant_type", "authorization_code");
     params.add("client_id", client);
@@ -59,14 +59,14 @@ public class KakaoOAuthClient {
       if (response == null) {
         throw new IllegalStateException("Kakao token response was empty");
       }
-      return objectMapper.readValue(response, KakaoDTO.KakaoToken.class);
+      return objectMapper.readValue(response, KakaoTokenResponse.class);
     } catch (RestClientException | JacksonException e) {
       log.warn("Kakao token request failed: {}", e.getClass().getSimpleName());
       throw new IllegalStateException("Kakao token request failed", e);
     }
   }
 
-  public KakaoDTO.KakaoProfile requestProfile(KakaoDTO.KakaoToken kakaoToken) {
+  public KakaoProfileResponse requestProfile(KakaoTokenResponse kakaoToken) {
     try {
       String response =
           restClient
@@ -79,7 +79,7 @@ public class KakaoOAuthClient {
       if (response == null) {
         throw new IllegalStateException("Kakao profile response was empty");
       }
-      return objectMapper.readValue(response, KakaoDTO.KakaoProfile.class);
+      return objectMapper.readValue(response, KakaoProfileResponse.class);
     } catch (RestClientException | JacksonException e) {
       log.warn("Kakao profile request failed: {}", e.getClass().getSimpleName());
       throw new IllegalStateException("Kakao profile request failed", e);

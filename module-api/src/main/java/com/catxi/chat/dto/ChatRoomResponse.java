@@ -1,7 +1,7 @@
 package com.catxi.chat.dto;
 
 import com.catxi.chat.domain.RoomStatus;
-import com.catxi.common.domain.Location;
+import com.catxi.common.domain.MeetingPoint;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalDateTime;
 
@@ -11,8 +11,8 @@ public record ChatRoomResponse(
     String hostName,
     String hostNickname,
     Integer matchCount,
-    Location startPoint,
-    Location endPoint,
+    MeetingPoint startPoint,
+    MeetingPoint endPoint,
     Long recruitSize,
     Long currentSize,
     RoomStatus status,

@@ -19,7 +19,7 @@ import com.catxi.chat.repository.ChatRoomRepository;
 import com.catxi.chat.repository.ChatRoomSummary;
 import com.catxi.chat.repository.KickedParticipantRepository;
 import com.catxi.common.api.exception.CatxiException;
-import com.catxi.common.domain.Location;
+import com.catxi.common.domain.MeetingPoint;
 import com.catxi.common.persistence.DatabaseConstraint;
 import com.catxi.member.service.MemberService;
 import com.catxi.member.service.MemberService.MemberChatProfile;
@@ -61,8 +61,8 @@ public class ChatRoomService {
 
   @Transactional
   public CreatedRoom createRoom(
-      Location startPoint,
-      Location endPoint,
+      MeetingPoint startPoint,
+      MeetingPoint endPoint,
       LocalDateTime departAt,
       Long recruitSize,
       String email) {
@@ -124,16 +124,16 @@ public class ChatRoomService {
     }
     Pageable pageable = PageRequest.of(page, 10, Sort.by(sort));
 
-    Location location =
+    MeetingPoint meetingPoint =
         switch (station) {
-          case "SOSA_ST" -> Location.SOSA_ST;
-          case "YEOKGOK_ST" -> Location.YEOKGOK_ST;
+          case "SOSA_ST" -> MeetingPoint.SOSA_ST;
+          case "YEOKGOK_ST" -> MeetingPoint.YEOKGOK_ST;
           case "ALL" -> null;
           default -> throw new CatxiException(ChatRoomErrorCode.INVALID_CHATROOM_PARAMETER);
         };
 
     Page<ChatRoomSummary> summaries =
-        chatRoomRepository.findByLocationAndDirection(location, direction, pageable);
+        chatRoomRepository.findByMeetingPointAndDirection(meetingPoint, direction, pageable);
     Map<Long, MemberChatProfile> hostProfiles =
         memberService
             .findChatProfilesByIds(
@@ -426,8 +426,8 @@ public class ChatRoomService {
 
   public record CreatedRoom(
       Long roomId,
-      Location startPoint,
-      Location endPoint,
+      MeetingPoint startPoint,
+      MeetingPoint endPoint,
       Long recruitSize,
       LocalDateTime departAt,
       RoomStatus status) {}
@@ -438,8 +438,8 @@ public class ChatRoomService {
       String hostName,
       String hostNickname,
       Integer matchCount,
-      Location startPoint,
-      Location endPoint,
+      MeetingPoint startPoint,
+      MeetingPoint endPoint,
       Long recruitSize,
       Long currentSize,
       RoomStatus status,
@@ -467,7 +467,7 @@ public class ChatRoomService {
       String hostNickname,
       List<String> participantEmails,
       List<String> participantNicknames,
-      Location startPoint,
-      Location endPoint,
+      MeetingPoint startPoint,
+      MeetingPoint endPoint,
       LocalDateTime departAt) {}
 }

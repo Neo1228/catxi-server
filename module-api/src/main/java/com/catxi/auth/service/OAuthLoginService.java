@@ -2,7 +2,8 @@ package com.catxi.auth.service;
 
 import com.catxi.auth.error.AuthErrorCode;
 import com.catxi.auth.infrastructure.OAuthCodeCache;
-import com.catxi.auth.kakao.KakaoDTO;
+import com.catxi.auth.kakao.KakaoProfileResponse;
+import com.catxi.auth.kakao.KakaoTokenResponse;
 import com.catxi.auth.kakao.KakaoOAuthClient;
 import com.catxi.common.api.exception.CatxiException;
 import com.catxi.member.domain.MemberStatus;
@@ -48,9 +49,9 @@ public class OAuthLoginService {
   private MemberService.MemberAccount oAuthLogin(String accessCode) {
 
     // 카카오 토큰 요청
-    KakaoDTO.KakaoToken kakaoToken = kakaoOAuthClient.requestToken(accessCode);
+    KakaoTokenResponse kakaoToken = kakaoOAuthClient.requestToken(accessCode);
     // 사용자 정보 요청
-    KakaoDTO.KakaoProfile kakaoProfile = kakaoOAuthClient.requestProfile(kakaoToken);
+    KakaoProfileResponse kakaoProfile = kakaoOAuthClient.requestProfile(kakaoToken);
 
     var kakaoAccount = kakaoProfile.kakaoAccount();
     if (kakaoAccount == null

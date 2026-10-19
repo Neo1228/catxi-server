@@ -1,6 +1,6 @@
 package com.catxi.member.domain;
 
-import com.catxi.common.domain.Location;
+import com.catxi.common.domain.MeetingPoint;
 import com.catxi.common.persistence.BaseTimeEntity;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -43,11 +43,11 @@ public class MatchHistory extends BaseTimeEntity {
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  private Location startPoint;
+  private MeetingPoint startPoint;
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  private Location endPoint;
+  private MeetingPoint endPoint;
 
   @BatchSize(size = 50)
   @ElementCollection

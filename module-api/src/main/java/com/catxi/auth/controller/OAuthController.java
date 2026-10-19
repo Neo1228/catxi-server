@@ -3,7 +3,7 @@ package com.catxi.auth.controller;
 import com.catxi.auth.dto.AccessTokenResponse;
 import com.catxi.auth.dto.AuthDTO.LoginRequest;
 import com.catxi.auth.dto.AuthDTO.LoginResponse;
-import com.catxi.auth.kakao.KakaoDTO;
+import com.catxi.auth.dto.AuthDTO;
 import com.catxi.auth.security.RefreshTokenCookie;
 import com.catxi.auth.service.OAuthLoginService;
 import com.catxi.auth.service.TokenService;
@@ -70,7 +70,7 @@ public class OAuthController {
   @Operation(summary = "추가 회원가입", description = "멤버의 닉네임, 학번을 받아오고 MemberStatus를 PENDING으로 변환해줍니다")
   @PatchMapping("/api/auth/signUp/catxi")
   public ApiResponse<?> completeSignup(
-      @RequestBody @Valid KakaoDTO.KakaoSignupRequest dto, Principal principal) {
+      @RequestBody @Valid AuthDTO.KakaoSignupRequest dto, Principal principal) {
 
     tokenService.completeKakaoSignup(principal.getName(), dto.nickname(), dto.studentNo());
     return ApiResponse.success("추가 회원정보 등록 완료");

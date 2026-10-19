@@ -3,7 +3,7 @@ package com.catxi.chat.repository;
 import com.catxi.chat.domain.QChatParticipant;
 import com.catxi.chat.domain.QChatRoom;
 import com.catxi.chat.domain.RoomStatus;
-import com.catxi.common.domain.Location;
+import com.catxi.common.domain.MeetingPoint;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -23,17 +23,17 @@ import org.springframework.stereotype.Repository;
 @RequiredArgsConstructor
 public class ChatRoomRepositoryCustomImpl implements ChatRoomRepositoryCustom {
   private final JPAQueryFactory jpaQueryFactory;
-  private static final Set<Location> STATIONS =
+  private static final Set<MeetingPoint> STATIONS =
       Set.of(
-          Location.SOSA_ST,
-          Location.GURO_ST,
-          Location.YEOKGOK_ST,
-          Location.BUCHEON_ST,
-          Location.SINDORIM_ST);
+          MeetingPoint.SOSA_ST,
+          MeetingPoint.GURO_ST,
+          MeetingPoint.YEOKGOK_ST,
+          MeetingPoint.BUCHEON_ST,
+          MeetingPoint.SINDORIM_ST);
 
   @Override
-  public Page<ChatRoomSummary> findByLocationAndDirection(
-      Location location, String point, Pageable pageable) {
+  public Page<ChatRoomSummary> findByMeetingPointAndDirection(
+      MeetingPoint meetingPoint, String direction, Pageable pageable) {
     QChatRoom chatRoom = QChatRoom.chatRoom;
     QChatParticipant participant = QChatParticipant.chatParticipant;
     List<ChatRoomSummary> chatRooms =
@@ -53,7 +53,8 @@ public class ChatRoomRepositoryCustomImpl implements ChatRoomRepositoryCustom {
             .from(chatRoom)
             .leftJoin(chatRoom.participants, participant)
             .where(
-                chatRoom.status.eq(RoomStatus.WAITING), filterByLocationAndPoint(location, point))
+                chatRoom.status.eq(RoomStatus.WAITING),
+                filterByMeetingPointAndDirection(meetingPoint, direction))
             .groupBy(chatRoom.roomId)
             .orderBy(getOrderSpecifier(pageable.getSort()))
             .offset(pageable.getOffset())
@@ -65,7 +66,8 @@ public class ChatRoomRepositoryCustomImpl implements ChatRoomRepositoryCustom {
             .select(chatRoom.count())
             .from(chatRoom)
             .where(
-                chatRoom.status.eq(RoomStatus.WAITING), filterByLocationAndPoint(location, point));
+                chatRoom.status.eq(RoomStatus.WAITING),
+                filterByMeetingPointAndDirection(meetingPoint, direction));
 
     return PageableExecutionUtils.getPage(chatRooms, pageable, total::fetchOne);
   }
@@ -90,13 +92,18 @@ public class ChatRoomRepositoryCustomImpl implements ChatRoomRepositoryCustom {
     return orderSpecifiers.toArray(new OrderSpecifier[0]);
   }
 
-  private BooleanExpression filterByLocationAndPoint(Location location, String point) {
+  private BooleanExpression filterByMeetingPointAndDirection(
+      MeetingPoint meetingPoint, String direction) {
     QChatRoom chatRoom = QChatRoom.chatRoom;
-    // 전체 역을 조회할 때는 출발지나 도착지가 택시 승강장인 방만 찾습니다.
-    if (point.equals("TO_SCHOOL")) {
-      return location == null ? chatRoom.startPoint.in(STATIONS) : chatRoom.startPoint.eq(location);
-    } else if (point.equals("FROM_SCHOOL")) {
-      return location == null ? chatRoom.endPoint.in(STATIONS) : chatRoom.endPoint.eq(location);
+    // 전체 역을 조회할 때는 출발지나 도착지가 등록된 역인 방만 찾습니다.
+    if (direction.equals("TO_SCHOOL")) {
+      return meetingPoint == null
+          ? chatRoom.startPoint.in(STATIONS)
+          : chatRoom.startPoint.eq(meetingPoint);
+    } else if (direction.equals("FROM_SCHOOL")) {
+      return meetingPoint == null
+          ? chatRoom.endPoint.in(STATIONS)
+          : chatRoom.endPoint.eq(meetingPoint);
     } else {
       throw new IllegalStateException("서비스 검증을 거치지 않은 채팅방 방향입니다.");
     }
