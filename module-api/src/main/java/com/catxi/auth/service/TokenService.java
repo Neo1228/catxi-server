@@ -1,8 +1,8 @@
 package com.catxi.auth.service;
 
 import com.catxi.auth.error.AuthErrorCode;
-import com.catxi.auth.infrastructure.RefreshTokenRepository;
-import com.catxi.auth.infrastructure.TokenBlacklistRepository;
+import com.catxi.auth.redis.RefreshTokenRepository;
+import com.catxi.auth.redis.TokenBlacklistRepository;
 import com.catxi.auth.jwt.JwtTokenParser;
 import com.catxi.auth.jwt.JwtTokenProvider;
 import com.catxi.common.api.exception.CatxiException;

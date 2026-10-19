@@ -1,4 +1,4 @@
-package com.catxi.auth.infrastructure;
+package com.catxi.auth.redis;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

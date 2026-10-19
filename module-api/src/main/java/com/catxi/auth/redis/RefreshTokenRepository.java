@@ -1,4 +1,4 @@
-package com.catxi.auth.infrastructure;
+package com.catxi.auth.redis;
 
 import java.time.Duration;
 import java.util.List;

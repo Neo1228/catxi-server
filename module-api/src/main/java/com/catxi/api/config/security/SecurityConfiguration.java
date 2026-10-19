@@ -1,7 +1,7 @@
 package com.catxi.api.config.security;
 
 import com.catxi.auth.config.AuthMode;
-import com.catxi.auth.infrastructure.TokenBlacklistRepository;
+import com.catxi.auth.redis.TokenBlacklistRepository;
 import com.catxi.auth.jwt.JwtFilter;
 import com.catxi.auth.jwt.JwtTokenParser;
 import com.catxi.auth.service.TokenService;

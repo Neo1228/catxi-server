@@ -1,7 +1,7 @@
 package com.catxi.auth.service;
 
 import com.catxi.auth.error.AuthErrorCode;
-import com.catxi.auth.infrastructure.OAuthCodeCache;
+import com.catxi.auth.redis.OAuthCodeCache;
 import com.catxi.auth.kakao.KakaoOAuthClient;
 import com.catxi.auth.kakao.KakaoProfileResponse;
 import com.catxi.auth.kakao.KakaoTokenResponse;

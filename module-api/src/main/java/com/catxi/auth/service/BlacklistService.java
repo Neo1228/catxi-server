@@ -1,7 +1,7 @@
 package com.catxi.auth.service;
 
-import com.catxi.auth.infrastructure.RefreshTokenRepository;
-import com.catxi.auth.infrastructure.TokenBlacklistRepository;
+import com.catxi.auth.redis.RefreshTokenRepository;
+import com.catxi.auth.redis.TokenBlacklistRepository;
 import com.catxi.member.service.MemberService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

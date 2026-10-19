@@ -2,7 +2,7 @@ package com.catxi.auth.jwt;
 
 import com.catxi.auth.config.AuthMode;
 import com.catxi.auth.error.AuthErrorCode;
-import com.catxi.auth.infrastructure.TokenBlacklistRepository;
+import com.catxi.auth.redis.TokenBlacklistRepository;
 import com.catxi.auth.security.MemberUserDetails;
 import com.catxi.auth.security.RefreshTokenCookie;
 import com.catxi.auth.service.TokenService;
