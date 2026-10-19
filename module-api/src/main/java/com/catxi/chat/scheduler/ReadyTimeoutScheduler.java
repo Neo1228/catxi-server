@@ -1,31 +1,21 @@
 package com.catxi.chat.scheduler;
 
-import com.catxi.chat.domain.ChatParticipant;
 import com.catxi.chat.domain.ChatRoom;
 import com.catxi.chat.domain.RoomStatus;
 import com.catxi.chat.error.ChatRoomErrorCode;
-import com.catxi.chat.event.ChatRoomAccessRevoked;
-import com.catxi.chat.event.MatchCompletedNotificationRequested;
 import com.catxi.chat.realtime.ReadyResultPublisher;
-import com.catxi.chat.repository.ChatParticipantRepository;
 import com.catxi.chat.repository.ChatRoomRepository;
-import com.catxi.chat.service.ChatMessageService;
-import com.catxi.chat.service.MatchHistoryRecorder;
+import com.catxi.chat.service.ReadyService;
 import com.catxi.common.api.exception.CatxiException;
-import com.catxi.member.service.MemberService;
-import com.catxi.member.service.MemberService.MemberChatProfile;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
 
 @Slf4j
 @Component
@@ -36,38 +26,23 @@ public class ReadyTimeoutScheduler {
   private final ReadyResultPublisher readyResultPublisher;
   private final TaskScheduler taskScheduler;
   private final ChatRoomRepository chatRoomRepository;
-  private final ChatParticipantRepository chatParticipantRepository;
-  private final MemberService memberService;
-  private final ChatMessageService chatMessageService;
-  private final MatchHistoryRecorder matchHistoryRecorder;
-  private final ApplicationEventPublisher applicationEventPublisher;
-  private final TransactionTemplate transactionTemplate;
+  private final ReadyService readyService;
 
   public ReadyTimeoutScheduler(
       @Qualifier("readyTimeoutScheduler") TaskScheduler taskScheduler,
       ChatRoomRepository chatRoomRepository,
-      ChatParticipantRepository chatParticipantRepository,
-      MemberService memberService,
-      ChatMessageService chatMessageService,
-      MatchHistoryRecorder matchHistoryRecorder,
-      ApplicationEventPublisher applicationEventPublisher,
-      ReadyResultPublisher readyResultPublisher,
-      PlatformTransactionManager transactionManager) {
+      ReadyService readyService,
+      ReadyResultPublisher readyResultPublisher) {
     this.taskScheduler = taskScheduler;
     this.chatRoomRepository = chatRoomRepository;
-    this.chatParticipantRepository = chatParticipantRepository;
-    this.memberService = memberService;
-    this.chatMessageService = chatMessageService;
-    this.matchHistoryRecorder = matchHistoryRecorder;
-    this.applicationEventPublisher = applicationEventPublisher;
+    this.readyService = readyService;
     this.readyResultPublisher = readyResultPublisher;
-    this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
-  public void scheduleReadyTimeout(String roomId) {
+  public void scheduleReadyTimeout(Long roomId) {
     ChatRoom room =
         chatRoomRepository
-            .findById(Long.valueOf(roomId))
+            .findById(roomId)
             .orElseThrow(() -> new CatxiException(ChatRoomErrorCode.CHATROOM_NOT_FOUND));
     if (room.getStatus() != RoomStatus.READY_LOCKED || room.getReadyTimeoutAt() == null) {
       return;
@@ -96,7 +71,13 @@ public class ReadyTimeoutScheduler {
 
   private void processReadyTimeoutSafely(Long roomId) {
     try {
-      checkAndUpdateRoomStatus(roomId.toString());
+      readyService
+          .processReadyTimeout(roomId)
+          .ifPresent(
+              result -> {
+                readyResultPublisher.publish(roomId, result.eventType(), result.eventContent());
+                log.info("[ReadyTimeoutScheduler] 방 상태 업데이트 완료: {} at {}", roomId, LocalDateTime.now());
+              });
     } catch (Exception e) {
       try {
         LocalDateTime now = LocalDateTime.now();
@@ -112,81 +93,4 @@ public class ReadyTimeoutScheduler {
       }
     }
   }
-
-  public void checkAndUpdateRoomStatus(String roomId) {
-    TimeoutResult result =
-        transactionTemplate.execute(status -> updateRoomStatus(Long.valueOf(roomId)));
-
-    if (result == null) {
-      return;
-    }
-
-    if (result.eventType() != null) {
-      publishRoomResult(Long.valueOf(roomId), result.eventType(), result.eventContent());
-    }
-    log.info("[ReadyTimeoutScheduler] 방 상태 업데이트 완료: {} at {}", roomId, LocalDateTime.now());
-  }
-
-  private TimeoutResult updateRoomStatus(Long roomId) {
-    ChatRoom room =
-        chatRoomRepository
-            .findByIdForUpdate(roomId)
-            .orElseThrow(() -> new CatxiException(ChatRoomErrorCode.CHATROOM_NOT_FOUND));
-
-    if (room.getStatus() != RoomStatus.READY_LOCKED
-        || room.getReadyTimeoutAt() == null
-        || room.getReadyTimeoutAt().isAfter(LocalDateTime.now())) {
-      return null;
-    }
-
-    Long savedCount = room.getReadyParticipantCount();
-    long currentCount = chatParticipantRepository.countByChatRoomAndIsReady(room, true);
-    if (savedCount == null) {
-      log.warn("준비 요청 당시 인원 스냅샷이 없어 매칭을 보류합니다: roomId={}", roomId);
-    }
-    if (savedCount != null && savedCount > 1 && savedCount == currentCount) {
-      room.matchedStatus(RoomStatus.MATCHED);
-      chatRoomRepository.save(room);
-      matchHistoryRecorder.recordMatchedRoom(room);
-      // 실시간 전송을 놓쳐도 채팅 이력과 푸시 작업이 남도록 상태 변경과 함께 저장합니다.
-      List<Long> participantIds = chatParticipantRepository.findMemberIdsByChatRoom(room);
-      applicationEventPublisher.publishEvent(
-          new MatchCompletedNotificationRequested(participantIds, roomId));
-      chatMessageService.sendSystemMessage(roomId, "모든 참가자가 준비되어 매칭이 완료되었습니다.");
-      return new TimeoutResult("MATCHED", "모든 참가자가 준비되었습니다. 매칭이 완료되었습니다");
-    }
-
-    List<ChatParticipant> unreadyParticipants =
-        chatParticipantRepository.findByChatRoom(room).stream()
-            .filter(participant -> !participant.isReady())
-            .toList();
-    List<MemberChatProfile> removedMembers =
-        memberService.findChatProfilesByIds(
-            unreadyParticipants.stream().map(ChatParticipant::getMemberId).toList());
-    List<String> removeNickNames =
-        removedMembers.stream().map(MemberChatProfile::nickname).toList();
-    unreadyParticipants.forEach(
-        participant ->
-            applicationEventPublisher.publishEvent(
-                new ChatRoomAccessRevoked(roomId, participant.getMemberId())));
-    chatParticipantRepository.deleteAllByChatRoomAndIsReadyFalse(room);
-    chatParticipantRepository.clearReadyStatusForNonHosts(room.getRoomId());
-    for (String nickName : removeNickNames) {
-      chatMessageService.sendSystemMessage(roomId, nickName + " 님이 퇴장하셨습니다.");
-    }
-
-    room.setStatus(RoomStatus.WAITING);
-    chatRoomRepository.save(room);
-    String message =
-        savedCount == null
-            ? "준비 요청 당시 인원을 확인할 수 없어 대기 상태로 돌아갑니다. 다시 요청해 주세요."
-            : "일부 참가자가 준비하지 않아 대기 상태로 돌아갑니다.";
-    return new TimeoutResult("RETURN_WAITING", message);
-  }
-
-  private void publishRoomResult(Long roomId, String type, String content) {
-    readyResultPublisher.publish(roomId, type, content);
-  }
-
-  private record TimeoutResult(String eventType, String eventContent) {}
 }

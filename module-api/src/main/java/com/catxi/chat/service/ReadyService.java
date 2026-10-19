@@ -6,6 +6,8 @@ import com.catxi.chat.domain.ReadyType;
 import com.catxi.chat.domain.RoomStatus;
 import com.catxi.chat.error.ChatParticipantErrorCode;
 import com.catxi.chat.error.ChatRoomErrorCode;
+import com.catxi.chat.event.ChatRoomAccessRevoked;
+import com.catxi.chat.event.MatchCompletedNotificationRequested;
 import com.catxi.chat.event.ReadyMessageEvent;
 import com.catxi.chat.event.ReadyRequestNotificationRequested;
 import com.catxi.chat.event.ReadyTimeoutRequestedEvent;
@@ -16,6 +18,7 @@ import com.catxi.member.service.MemberService;
 import com.catxi.member.service.MemberService.MemberChatProfile;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -33,6 +36,8 @@ public class ReadyService {
   private final MemberService memberService;
   private final ChatRoomRepository chatRoomRepository;
   private final ChatRoomService chatRoomService;
+  private final ChatMessageService chatMessageService;
+  private final MatchHistoryRecorder matchHistoryRecorder;
 
   @Transactional
   public void requestReady(Long roomId, String email) {
@@ -114,6 +119,66 @@ public class ReadyService {
     chatRoomService.leaveChatRoom(roomId, email);
   }
 
+  @Transactional
+  public Optional<ReadyTimeoutResult> processReadyTimeout(Long roomId) {
+    ChatRoom room =
+        chatRoomRepository
+            .findByIdForUpdate(roomId)
+            .orElseThrow(() -> new CatxiException(ChatRoomErrorCode.CHATROOM_NOT_FOUND));
+
+    if (room.getStatus() != RoomStatus.READY_LOCKED
+        || room.getReadyTimeoutAt() == null
+        || room.getReadyTimeoutAt().isAfter(LocalDateTime.now())) {
+      return Optional.empty();
+    }
+
+    Long requestedParticipantCount = room.getReadyParticipantCount();
+    long readyParticipantCount = chatParticipantRepository.countByChatRoomAndIsReady(room, true);
+    if (requestedParticipantCount == null) {
+      log.warn("준비 요청 당시 인원 스냅샷이 없어 매칭을 보류합니다: roomId={}", roomId);
+    }
+    if (requestedParticipantCount != null
+        && requestedParticipantCount > 1
+        && requestedParticipantCount == readyParticipantCount) {
+      room.matchedStatus(RoomStatus.MATCHED);
+      chatRoomRepository.save(room);
+      matchHistoryRecorder.recordMatchedRoom(room);
+      // 실시간 전송이 누락돼도 매칭 내역과 푸시 작업은 상태 변경과 함께 저장합니다.
+      List<Long> participantIds = chatParticipantRepository.findMemberIdsByChatRoom(room);
+      eventPublisher.publishEvent(new MatchCompletedNotificationRequested(participantIds, roomId));
+      chatMessageService.sendSystemMessage(roomId, "모든 참가자가 준비되어 매칭이 완료되었습니다.");
+      return Optional.of(
+          new ReadyTimeoutResult("MATCHED", "모든 참가자가 준비되었습니다. 매칭이 완료되었습니다"));
+    }
+
+    List<ChatParticipant> unreadyParticipants =
+        chatParticipantRepository.findByChatRoom(room).stream()
+            .filter(participant -> !participant.isReady())
+            .toList();
+    List<MemberChatProfile> removedMembers =
+        memberService.findChatProfilesByIds(
+            unreadyParticipants.stream().map(ChatParticipant::getMemberId).toList());
+    List<String> removedNicknames =
+        removedMembers.stream().map(MemberChatProfile::nickname).toList();
+    unreadyParticipants.forEach(
+        participant ->
+            eventPublisher.publishEvent(
+                new ChatRoomAccessRevoked(roomId, participant.getMemberId())));
+    chatParticipantRepository.deleteAllByChatRoomAndIsReadyFalse(room);
+    chatParticipantRepository.clearReadyStatusForNonHosts(room.getRoomId());
+    for (String nickname : removedNicknames) {
+      chatMessageService.sendSystemMessage(roomId, nickname + " 님이 퇴장하셨습니다.");
+    }
+
+    room.setStatus(RoomStatus.WAITING);
+    chatRoomRepository.save(room);
+    String message =
+        requestedParticipantCount == null
+            ? "준비 요청 당시 인원을 확인할 수 없어 대기 상태로 돌아갑니다. 다시 요청해 주세요."
+            : "일부 참가자가 준비하지 않아 대기 상태로 돌아갑니다.";
+    return Optional.of(new ReadyTimeoutResult("RETURN_WAITING", message));
+  }
+
   private void sendReadyRequestNotification(ChatRoom room, MemberChatProfile host) {
     try {
       log.info("Ready FCM Outbox 저장 시작: RoomId={}", room.getRoomId());
@@ -155,4 +220,6 @@ public class ReadyService {
       throw new CatxiException(ChatParticipantErrorCode.ALREADY_READY);
     }
   }
+
+  public record ReadyTimeoutResult(String eventType, String eventContent) {}
 }
