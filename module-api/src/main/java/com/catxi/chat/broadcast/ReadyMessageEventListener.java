@@ -1,7 +1,7 @@
 package com.catxi.chat.broadcast;
 
-import com.catxi.chat.event.ReadyMessageEvent;
 import com.catxi.chat.broadcast.message.ReadyBroadcastMessage;
+import com.catxi.chat.event.ReadyMessageEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -22,7 +22,7 @@ public class ReadyMessageEventListener {
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onReadyMessageEvent(ReadyMessageEvent event) {
     try {
-      String channel = "ready:" + event.roomId();
+      String channel = ChatRedisChannels.READY_PREFIX + event.roomId();
       String json = objectMapper.writeValueAsString(toResponse(event));
       redisTemplate.convertAndSend(channel, json);
     } catch (Exception e) {

@@ -1,5 +1,6 @@
 package com.catxi.api.config;
 
+import com.catxi.chat.broadcast.ChatRedisChannels;
 import com.catxi.chat.broadcast.RedisChatBroadcastListener;
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.SocketOptions;
@@ -129,14 +130,18 @@ public class RedisConfiguration {
     container.setTaskExecutor(redisPubSubExecutor);
 
     // 명시적 구독: 채널 + 패턴
-    container.addMessageListener(listener, new ChannelTopic("chat"));
-    container.addMessageListener(listener, new ChannelTopic("map"));
-    container.addMessageListener(listener, new PatternTopic("ready:*"));
-    container.addMessageListener(listener, new PatternTopic("participants:*"));
-    container.addMessageListener(listener, new PatternTopic("kick:*"));
-    container.addMessageListener(listener, new PatternTopic("roomaccessrevoked:*"));
-    container.addMessageListener(listener, new PatternTopic("roomdeleted:*"));
-    container.addMessageListener(listener, new PatternTopic("readyresult:*"));
+    container.addMessageListener(listener, new ChannelTopic(ChatRedisChannels.CHAT));
+    container.addMessageListener(listener, new ChannelTopic(ChatRedisChannels.MAP));
+    container.addMessageListener(listener, new PatternTopic(ChatRedisChannels.READY_PREFIX + "*"));
+    container.addMessageListener(
+        listener, new PatternTopic(ChatRedisChannels.PARTICIPANTS_PREFIX + "*"));
+    container.addMessageListener(listener, new PatternTopic(ChatRedisChannels.KICK_PREFIX + "*"));
+    container.addMessageListener(
+        listener, new PatternTopic(ChatRedisChannels.ROOM_ACCESS_REVOKED_PREFIX + "*"));
+    container.addMessageListener(
+        listener, new PatternTopic(ChatRedisChannels.ROOM_DELETED_PREFIX + "*"));
+    container.addMessageListener(
+        listener, new PatternTopic(ChatRedisChannels.READY_RESULT_PREFIX + "*"));
 
     // 종료 시 정리를 위해 리스트에 추가
     listenerContainers.add(container);

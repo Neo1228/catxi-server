@@ -1,10 +1,10 @@
 package com.catxi.chat.broadcast;
 
-import com.catxi.chat.event.ChatRoomAccessRevoked;
 import com.catxi.chat.broadcast.message.ChatMessageBroadcast;
 import com.catxi.chat.broadcast.message.ParticipantsUpdateMessage;
 import com.catxi.chat.broadcast.message.ReadyBroadcastMessage;
 import com.catxi.chat.broadcast.message.RoomEventMessage;
+import com.catxi.chat.event.ChatRoomAccessRevoked;
 import com.catxi.chat.map.broadcast.MapCoordinateBroadcast;
 import com.catxi.chat.websocket.StompSubscriptionRevoker;
 import java.nio.charset.StandardCharsets;
@@ -39,35 +39,35 @@ public class RedisChatBroadcastListener implements MessageListener {
     log.debug("Redis Pub/Sub 메시지를 수신했습니다");
 
     try {
-      if ("chat".equals(channel)) {
+      if (ChatRedisChannels.CHAT.equals(channel)) {
         ChatMessageBroadcast chatMessageDto =
             objectMapper.readValue(payload, ChatMessageBroadcast.class);
         messageTemplate.convertAndSend("/topic/" + chatMessageDto.roomId(), chatMessageDto);
 
-      } else if ("map".equals(channel)) {
+      } else if (ChatRedisChannels.MAP.equals(channel)) {
         MapCoordinateBroadcast coordinateRes =
             objectMapper.readValue(payload, MapCoordinateBroadcast.class);
         messageTemplate.convertAndSend("/topic/map/" + coordinateRes.roomId(), coordinateRes);
-      } else if (channel.startsWith("ready:")) {
+      } else if (channel.startsWith(ChatRedisChannels.READY_PREFIX)) {
         ReadyBroadcastMessage readyMessage =
             objectMapper.readValue(payload, ReadyBroadcastMessage.class);
         messageTemplate.convertAndSend("/topic/ready/" + readyMessage.roomId(), readyMessage);
-      } else if (channel.startsWith("participants:")) {
+      } else if (channel.startsWith(ChatRedisChannels.PARTICIPANTS_PREFIX)) {
         ParticipantsUpdateMessage update =
             objectMapper.readValue(payload, ParticipantsUpdateMessage.class);
         messageTemplate.convertAndSend("/topic/room/" + update.roomId() + "/participants", update);
-      } else if (channel.startsWith("kick:")) {
-        String email = channel.split(":", 2)[1];
+      } else if (channel.startsWith(ChatRedisChannels.KICK_PREFIX)) {
+        String email = channel.substring(ChatRedisChannels.KICK_PREFIX.length());
         messageTemplate.convertAndSendToUser(email, "/queue/kick", "KICKED");
-      } else if (channel.startsWith("roomaccessrevoked:")) {
+      } else if (channel.startsWith(ChatRedisChannels.ROOM_ACCESS_REVOKED_PREFIX)) {
         ChatRoomAccessRevoked event = objectMapper.readValue(payload, ChatRoomAccessRevoked.class);
         subscriptionRevoker.revokeMemberLocally(event.roomId(), event.memberId());
-      } else if (channel.startsWith("roomdeleted:")) {
+      } else if (channel.startsWith(ChatRedisChannels.ROOM_DELETED_PREFIX)) {
         RoomEventMessage evt = objectMapper.readValue(payload, RoomEventMessage.class);
         subscriptionRevoker.markRoomClosingLocally(evt.roomId());
         messageTemplate.convertAndSend("/topic/room/" + evt.roomId() + "/deleted", evt);
         subscriptionRevoker.finishRoomClosingIfEmpty(evt.roomId());
-      } else if (channel.startsWith("readyresult:")) {
+      } else if (channel.startsWith(ChatRedisChannels.READY_RESULT_PREFIX)) {
         RoomEventMessage evt = objectMapper.readValue(payload, RoomEventMessage.class);
         messageTemplate.convertAndSend("/topic/ready/" + evt.roomId() + "/result", evt);
       }

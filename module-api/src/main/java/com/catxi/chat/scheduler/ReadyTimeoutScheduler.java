@@ -1,9 +1,9 @@
 package com.catxi.chat.scheduler;
 
+import com.catxi.chat.broadcast.ReadyResultPublisher;
 import com.catxi.chat.domain.ChatRoom;
 import com.catxi.chat.domain.RoomStatus;
 import com.catxi.chat.error.ChatRoomErrorCode;
-import com.catxi.chat.broadcast.ReadyResultPublisher;
 import com.catxi.chat.repository.ChatRoomRepository;
 import com.catxi.chat.service.ReadyService;
 import com.catxi.common.api.exception.CatxiException;

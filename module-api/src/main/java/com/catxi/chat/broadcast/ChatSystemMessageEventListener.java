@@ -1,7 +1,7 @@
 package com.catxi.chat.broadcast;
 
-import com.catxi.chat.event.ChatSystemMessageEvent;
 import com.catxi.chat.broadcast.message.ChatMessageBroadcast;
+import com.catxi.chat.event.ChatSystemMessageEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -24,7 +24,8 @@ public class ChatSystemMessageEventListener {
       ChatMessageBroadcast message =
           new ChatMessageBroadcast(
               event.roomId(), "[SYSTEM]", event.content(), event.sentAt(), event.messageId());
-      redisTemplate.convertAndSend("chat", objectMapper.writeValueAsString(message));
+      redisTemplate.convertAndSend(
+          ChatRedisChannels.CHAT, objectMapper.writeValueAsString(message));
     } catch (Exception e) {
       log.error("시스템 메시지 발행 실패: roomId={}", event.roomId(), e);
     }

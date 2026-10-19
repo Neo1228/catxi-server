@@ -29,7 +29,7 @@ public class ChatRoomAccessRevocationListener {
     revoker.revokeMemberLocally(event.roomId(), event.memberId());
     try {
       String payload = objectMapper.writeValueAsString(event);
-      redis.convertAndSend("roomaccessrevoked:" + event.roomId(), payload);
+      redis.convertAndSend(ChatRedisChannels.ROOM_ACCESS_REVOKED_PREFIX + event.roomId(), payload);
     } catch (Exception exception) {
       log.error(
           "채팅방 권한 회수 전파 실패: roomId={}, memberId={}", event.roomId(), event.memberId(), exception);

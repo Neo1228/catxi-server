@@ -18,7 +18,8 @@ public class ReadyResultPublisher {
   public void publish(Long roomId, String type, String content) {
     try {
       RoomEventMessage event = new RoomEventMessage(roomId, type, content);
-      redisTemplate.convertAndSend("readyresult:" + roomId, objectMapper.writeValueAsString(event));
+      redisTemplate.convertAndSend(
+          ChatRedisChannels.READY_RESULT_PREFIX + roomId, objectMapper.writeValueAsString(event));
     } catch (Exception exception) {
       log.error("준비 결과 발행 실패: roomId={}", roomId, exception);
     }

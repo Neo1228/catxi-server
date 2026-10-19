@@ -38,7 +38,7 @@ public class ChatMessagePublisher {
   public void publish(Long roomId, ChatMessageBroadcast message) {
     try {
       String payload = objectMapper.writeValueAsString(message);
-      Long subscribers = redisTemplate.convertAndSend("chat", payload);
+      Long subscribers = redisTemplate.convertAndSend(ChatRedisChannels.CHAT, payload);
       if (subscribers == null || subscribers == 0) {
         publishLocally(roomId, message);
       }

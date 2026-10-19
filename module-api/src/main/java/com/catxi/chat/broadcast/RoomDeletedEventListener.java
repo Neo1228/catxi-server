@@ -1,7 +1,7 @@
 package com.catxi.chat.broadcast;
 
-import com.catxi.chat.event.RoomDeletedEvent;
 import com.catxi.chat.broadcast.message.RoomEventMessage;
+import com.catxi.chat.event.RoomDeletedEvent;
 import com.catxi.chat.websocket.StompSubscriptionRevoker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,7 +45,7 @@ public class RoomDeletedEventListener {
       String json =
           objectMapper.writeValueAsString(new RoomEventMessage(e.roomId(), "DELETED", message));
       // 방 단위 브로드캐스트
-      redis.convertAndSend("roomdeleted:" + e.roomId(), json);
+      redis.convertAndSend(ChatRedisChannels.ROOM_DELETED_PREFIX + e.roomId(), json);
       revoker.finishRoomClosingIfEmpty(e.roomId());
 
     } catch (Exception ex) {
