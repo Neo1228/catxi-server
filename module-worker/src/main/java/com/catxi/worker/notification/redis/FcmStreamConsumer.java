@@ -278,7 +278,8 @@ public class FcmStreamConsumer {
             .markDelivered(event.eventId())
             .then(streamStore.acknowledgeAndDelete(messageId));
       }
-      FcmNotificationMessage failedEvent = withTargets(event, List.copyOf(terminalFailures.keySet()));
+      FcmNotificationMessage failedEvent =
+          withTargets(event, List.copyOf(terminalFailures.keySet()));
       return serialize(failedEvent)
           .flatMap(
               failedPayload ->

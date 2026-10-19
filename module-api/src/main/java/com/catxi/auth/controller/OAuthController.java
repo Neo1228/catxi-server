@@ -1,9 +1,9 @@
 package com.catxi.auth.controller;
 
 import com.catxi.auth.dto.AccessTokenResponse;
+import com.catxi.auth.dto.AuthDTO;
 import com.catxi.auth.dto.AuthDTO.LoginRequest;
 import com.catxi.auth.dto.AuthDTO.LoginResponse;
-import com.catxi.auth.dto.AuthDTO;
 import com.catxi.auth.security.RefreshTokenCookie;
 import com.catxi.auth.service.OAuthLoginService;
 import com.catxi.auth.service.TokenService;
