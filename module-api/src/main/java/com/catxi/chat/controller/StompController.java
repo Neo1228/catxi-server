@@ -1,6 +1,6 @@
 package com.catxi.chat.controller;
 
-import com.catxi.chat.realtime.message.ChatMessageSendRequest;
+import com.catxi.chat.websocket.message.ChatMessageSendRequest;
 import com.catxi.chat.service.ChatMessageDeliveryService;
 import jakarta.validation.Valid;
 import java.security.Principal;

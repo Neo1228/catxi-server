@@ -1,11 +1,11 @@
-package com.catxi.chat.realtime;
+package com.catxi.chat.broadcast;
 
 import com.catxi.chat.event.ChatRoomAccessRevoked;
-import com.catxi.chat.map.realtime.MapCoordinateBroadcast;
-import com.catxi.chat.realtime.message.ChatMessageBroadcast;
-import com.catxi.chat.realtime.message.ParticipantsUpdateMessage;
-import com.catxi.chat.realtime.message.ReadyBroadcastMessage;
-import com.catxi.chat.realtime.message.RoomEventMessage;
+import com.catxi.chat.broadcast.message.ChatMessageBroadcast;
+import com.catxi.chat.broadcast.message.ParticipantsUpdateMessage;
+import com.catxi.chat.broadcast.message.ReadyBroadcastMessage;
+import com.catxi.chat.broadcast.message.RoomEventMessage;
+import com.catxi.chat.map.broadcast.MapCoordinateBroadcast;
 import com.catxi.chat.websocket.StompSubscriptionRevoker;
 import java.nio.charset.StandardCharsets;
 import lombok.extern.slf4j.Slf4j;

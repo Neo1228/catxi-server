@@ -5,7 +5,7 @@ import com.catxi.chat.error.ChatParticipantErrorCode;
 import com.catxi.chat.error.ChatRoomErrorCode;
 import com.catxi.chat.map.domain.MapCoordinate;
 import com.catxi.chat.map.error.MapErrorCode;
-import com.catxi.chat.map.realtime.MapCoordinatePublisher;
+import com.catxi.chat.map.broadcast.MapCoordinatePublisher;
 import com.catxi.chat.map.repository.CoordinateRepository;
 import com.catxi.chat.repository.ChatParticipantRepository;
 import com.catxi.chat.repository.ChatRoomRepository;

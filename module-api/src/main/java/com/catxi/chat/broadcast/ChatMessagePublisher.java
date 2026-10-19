@@ -1,6 +1,6 @@
-package com.catxi.chat.realtime;
+package com.catxi.chat.broadcast;
 
-import com.catxi.chat.realtime.message.ChatMessageBroadcast;
+import com.catxi.chat.broadcast.message.ChatMessageBroadcast;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;

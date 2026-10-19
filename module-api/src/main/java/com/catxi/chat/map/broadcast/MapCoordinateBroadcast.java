@@ -1,4 +1,4 @@
-package com.catxi.chat.map.realtime;
+package com.catxi.chat.map.broadcast;
 
 public record MapCoordinateBroadcast(
     Long roomId,

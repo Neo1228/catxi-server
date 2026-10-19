@@ -1,6 +1,6 @@
 package com.catxi.chat.service;
 
-import com.catxi.chat.realtime.ChatMessagePublisher;
+import com.catxi.chat.broadcast.ChatMessagePublisher;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

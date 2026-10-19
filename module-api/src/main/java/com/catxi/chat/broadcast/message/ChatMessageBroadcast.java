@@ -1,4 +1,4 @@
-package com.catxi.chat.realtime.message;
+package com.catxi.chat.broadcast.message;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

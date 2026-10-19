@@ -1,4 +1,4 @@
-package com.catxi.chat.realtime.message;
+package com.catxi.chat.websocket.message;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

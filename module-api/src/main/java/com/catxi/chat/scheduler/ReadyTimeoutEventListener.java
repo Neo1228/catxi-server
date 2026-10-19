@@ -1,7 +1,6 @@
-package com.catxi.chat.listener;
+package com.catxi.chat.scheduler;
 
 import com.catxi.chat.event.ReadyTimeoutRequestedEvent;
-import com.catxi.chat.scheduler.ReadyTimeoutScheduler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

@@ -1,4 +1,4 @@
-package com.catxi.chat.realtime.message;
+package com.catxi.chat.broadcast.message;
 
 import com.catxi.chat.dto.ChatParticipantSummary;
 import java.util.List;

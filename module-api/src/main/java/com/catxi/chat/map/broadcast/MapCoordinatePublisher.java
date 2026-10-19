@@ -1,4 +1,4 @@
-package com.catxi.chat.map.realtime;
+package com.catxi.chat.map.broadcast;
 
 import com.catxi.chat.map.domain.MapCoordinate;
 import com.catxi.common.api.error.CommonErrorCode;

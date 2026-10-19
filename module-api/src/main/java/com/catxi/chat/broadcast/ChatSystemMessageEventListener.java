@@ -1,7 +1,7 @@
-package com.catxi.chat.listener;
+package com.catxi.chat.broadcast;
 
 import com.catxi.chat.event.ChatSystemMessageEvent;
-import com.catxi.chat.realtime.message.ChatMessageBroadcast;
+import com.catxi.chat.broadcast.message.ChatMessageBroadcast;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;

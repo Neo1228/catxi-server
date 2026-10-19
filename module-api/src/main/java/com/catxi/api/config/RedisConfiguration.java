@@ -1,6 +1,6 @@
 package com.catxi.api.config;
 
-import com.catxi.chat.realtime.RedisChatBroadcastListener;
+import com.catxi.chat.broadcast.RedisChatBroadcastListener;
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.SocketOptions;
 import jakarta.annotation.PreDestroy;

@@ -1,8 +1,8 @@
-package com.catxi.chat.listener;
+package com.catxi.chat.broadcast;
 
 import com.catxi.chat.event.ChatParticipantKicked;
 import com.catxi.chat.event.ChatRoomParticipantsUpdated;
-import com.catxi.chat.realtime.message.ParticipantsUpdateMessage;
+import com.catxi.chat.broadcast.message.ParticipantsUpdateMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -15,7 +15,7 @@ import tools.jackson.databind.ObjectMapper;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class ChatRoomRedisEventListener {
+public class ChatParticipantBroadcastListener {
 
   @Qualifier("chatPubSub")
   private final StringRedisTemplate redis;

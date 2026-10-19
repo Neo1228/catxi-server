@@ -1,4 +1,4 @@
-package com.catxi.chat.listener;
+package com.catxi.chat.broadcast;
 
 import com.catxi.chat.event.ChatRoomAccessRevoked;
 import com.catxi.chat.websocket.StompSubscriptionRevoker;

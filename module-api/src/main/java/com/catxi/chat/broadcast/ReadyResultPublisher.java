@@ -1,6 +1,6 @@
-package com.catxi.chat.realtime;
+package com.catxi.chat.broadcast;
 
-import com.catxi.chat.realtime.message.RoomEventMessage;
+import com.catxi.chat.broadcast.message.RoomEventMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;

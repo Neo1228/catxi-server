@@ -1,3 +1,3 @@
-package com.catxi.chat.realtime.message;
+package com.catxi.chat.broadcast.message;
 
 public record RoomEventMessage(Long roomId, String type, String message) {}
