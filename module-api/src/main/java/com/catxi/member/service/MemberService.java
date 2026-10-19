@@ -14,6 +14,7 @@ import java.util.Optional;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -153,7 +154,7 @@ public class MemberService {
         .toList();
   }
 
-  @Transactional
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public MemberAccount findOrCreateKakaoMember(String email, String nickname) {
     if (nickname == null || nickname.isBlank()) {
       throw new CatxiException(MemberErrorCode.INVALID_KAKAO_PROFILE);
@@ -174,12 +175,12 @@ public class MemberService {
             .status(MemberStatus.PENDING)
             .build();
     try {
-      return toAccount(memberRepository.save(newMember));
+      return toAccount(memberRepository.saveAndFlush(newMember));
     } catch (DataIntegrityViolationException exception) {
       return memberRepository
           .findByEmail(email)
           .map(MemberService::toAccount)
-          .orElseThrow(() -> new CatxiException(MemberErrorCode.MEMBER_NOT_FOUND));
+          .orElseThrow(() -> exception);
     }
   }
 
