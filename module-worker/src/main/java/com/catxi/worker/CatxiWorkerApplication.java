@@ -27,6 +27,7 @@ public class CatxiWorkerApplication {
       @Value("${WORKER_DB_USER:}") String username,
       @Value("${WORKER_DB_PW:}") String password,
       @Value("${fcm.worker.enabled}") boolean notificationsEnabled,
+      @Value("${chat.broadcast.worker.enabled:false}") boolean chatBroadcastEnabled,
       @Value("${fcm.worker.replay-only:false}") boolean replayOnly,
       @Value("${fcm.dead-letter.replay-id:}") String replayId) {
     return (ApplicationArguments args) -> {
@@ -39,10 +40,14 @@ public class CatxiWorkerApplication {
       if (!replayOnly && !replayId.isBlank()) {
         throw new IllegalStateException("DLQ 재처리 ID를 지정하려면 --fcm.worker.replay-only=true가 필요합니다");
       }
+      if (replayOnly && chatBroadcastEnabled) {
+        throw new IllegalStateException("일회성 DLQ 재처리 중에는 채팅 브로드캐스트 워커를 실행할 수 없습니다");
+      }
       if (environment.acceptsProfiles(Profiles.of("prod"))
           && !notificationsEnabled
+          && !chatBroadcastEnabled
           && !replayOnly) {
-        throw new IllegalStateException("운영 알림 워커에서는 매칭 FCM 알림을 비활성화할 수 없습니다");
+        throw new IllegalStateException("운영 워커에서는 FCM 또는 채팅 브로드캐스트 워커를 활성화해야 합니다");
       }
     };
   }

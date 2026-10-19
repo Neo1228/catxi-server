@@ -92,6 +92,19 @@ fcm:
     retry-max-delay: 30s
     max-retries: 3
 
+chat:
+  broadcast:
+    worker:
+      enabled: ${CHAT_BROADCAST_WORKER_ENABLED:false}
+    outbox:
+      poll-interval: ${CHAT_BROADCAST_OUTBOX_POLL_INTERVAL:250ms}
+      cleanup-batch-size: ${CHAT_BROADCAST_OUTBOX_CLEANUP_BATCH_SIZE:500}
+      publish-concurrency: ${CHAT_BROADCAST_OUTBOX_PUBLISH_CONCURRENCY:4}
+      lease-duration: ${CHAT_BROADCAST_OUTBOX_LEASE_DURATION:30s}
+      retry-base-delay: ${CHAT_BROADCAST_OUTBOX_RETRY_BASE_DELAY:1s}
+      retry-max-delay: ${CHAT_BROADCAST_OUTBOX_RETRY_MAX_DELAY:5m}
+      sent-retention: ${CHAT_BROADCAST_OUTBOX_SENT_RETENTION:1d}
+
 logging:
   level:
     com.catxi.worker: INFO
