@@ -1,7 +1,7 @@
 package com.catxi.worker.notification.delivery;
 
-import com.catxi.worker.notification.event.FcmNotificationEvent;
-import com.catxi.worker.notification.event.FcmNotificationEvent.NotificationType;
+import com.catxi.worker.notification.message.FcmNotificationMessage;
+import com.catxi.worker.notification.message.FcmNotificationMessage.NotificationType;
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutureCallback;
 import com.google.api.core.ApiFutures;
@@ -46,7 +46,7 @@ public class NotificationDeliveryService {
     this.firebaseMessaging = firebaseMessaging;
   }
 
-  public Mono<DeliveryOutcome> deliver(FcmNotificationEvent event) {
+  public Mono<DeliveryOutcome> deliver(FcmNotificationMessage event) {
     if (event.targetMemberIds().isEmpty()) {
       return Mono.just(DeliveryOutcome.completed());
     }
@@ -128,7 +128,7 @@ public class NotificationDeliveryService {
             });
   }
 
-  private Mono<DeliveryOutcome> sendBatch(FcmNotificationEvent event, List<FcmTarget> targets) {
+  private Mono<DeliveryOutcome> sendBatch(FcmNotificationMessage event, List<FcmTarget> targets) {
     List<FcmTarget> tokenTargets =
         targets.stream().filter(target -> target.type() == TargetType.TOKEN).toList();
     List<FcmTarget> fidTargets =
@@ -141,7 +141,7 @@ public class NotificationDeliveryService {
   }
 
   private Mono<DeliveryOutcome> sendTargetBatch(
-      FcmNotificationEvent event, List<FcmTarget> targets, TargetType targetType) {
+      FcmNotificationMessage event, List<FcmTarget> targets, TargetType targetType) {
     if (targets.isEmpty()) {
       return Mono.just(DeliveryOutcome.completed());
     }

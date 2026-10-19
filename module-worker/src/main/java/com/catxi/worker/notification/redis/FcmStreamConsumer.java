@@ -1,9 +1,9 @@
-package com.catxi.worker.notification.stream;
+package com.catxi.worker.notification.redis;
 
 import com.catxi.worker.notification.deadletter.DeadLetterRepository;
 import com.catxi.worker.notification.delivery.DeliveryOutcome;
 import com.catxi.worker.notification.delivery.NotificationDeliveryService;
-import com.catxi.worker.notification.event.FcmNotificationEvent;
+import com.catxi.worker.notification.message.FcmNotificationMessage;
 import com.catxi.worker.notification.outbox.FcmOutboxRepository;
 import java.net.InetAddress;
 import java.time.Duration;
@@ -201,13 +201,13 @@ public class FcmStreamConsumer {
         .findActivePayload(notificationEventId)
         .flatMap(
             payload -> {
-              FcmNotificationEvent event;
+              FcmNotificationMessage event;
               try {
                 String eventPayload = payload;
                 if (payload.stripLeading().startsWith("\"")) {
                   eventPayload = objectMapper.readValue(payload, String.class);
                 }
-                event = objectMapper.readValue(eventPayload, FcmNotificationEvent.class);
+                event = objectMapper.readValue(eventPayload, FcmNotificationMessage.class);
                 validate(event);
                 if (!notificationEventId.equals(event.eventId())) {
                   throw new IllegalArgumentException("FCM 아웃박스 이벤트 ID가 일치하지 않습니다");
@@ -243,7 +243,7 @@ public class FcmStreamConsumer {
   }
 
   private Mono<Void> recoverDeliveryFailure(
-      String messageId, String payload, FcmNotificationEvent event, Throwable error) {
+      String messageId, String payload, FcmNotificationMessage event, Throwable error) {
     log.warn(
         "FCM 이벤트 처리 중 일시 오류가 발생했습니다: messageId={}, eventId={}, retry={}",
         messageId,
@@ -255,7 +255,7 @@ public class FcmStreamConsumer {
           messageId, event.eventId(), payload, describe(error), event.retryCount());
     }
 
-    FcmNotificationEvent retryEvent = event.withIncrementedRetry();
+    FcmNotificationMessage retryEvent = event.withIncrementedRetry();
     return serialize(retryEvent)
         .flatMap(
             retryPayload ->
@@ -268,7 +268,7 @@ public class FcmStreamConsumer {
   }
 
   private Mono<Void> handleOutcome(
-      String messageId, String payload, FcmNotificationEvent event, DeliveryOutcome outcome) {
+      String messageId, String payload, FcmNotificationMessage event, DeliveryOutcome outcome) {
     List<Long> retryMemberIds = outcome.retryMemberIds();
     Map<Long, String> terminalFailures = outcome.terminalFailures();
 
@@ -278,7 +278,7 @@ public class FcmStreamConsumer {
             .markDelivered(event.eventId())
             .then(streamStore.acknowledgeAndDelete(messageId));
       }
-      FcmNotificationEvent failedEvent = withTargets(event, List.copyOf(terminalFailures.keySet()));
+      FcmNotificationMessage failedEvent = withTargets(event, List.copyOf(terminalFailures.keySet()));
       return serialize(failedEvent)
           .flatMap(
               failedPayload ->
@@ -295,7 +295,7 @@ public class FcmStreamConsumer {
     if (event.retryCount() >= maxRetries) {
       LinkedHashSet<Long> failedIds = new LinkedHashSet<>(retryMemberIds);
       failedIds.addAll(terminalFailures.keySet());
-      FcmNotificationEvent failedEvent = withTargets(event, List.copyOf(failedIds));
+      FcmNotificationMessage failedEvent = withTargets(event, List.copyOf(failedIds));
       String failure =
           terminalFailures.isEmpty() ? "FCM 전송 재시도 횟수를 초과했습니다" : "FCM 전송 실패: " + terminalFailures;
       return serialize(failedEvent)
@@ -307,7 +307,7 @@ public class FcmStreamConsumer {
           .then(streamStore.acknowledgeAndDelete(messageId));
     }
 
-    FcmNotificationEvent retryEvent = withTargets(event, retryMemberIds).withIncrementedRetry();
+    FcmNotificationMessage retryEvent = withTargets(event, retryMemberIds).withIncrementedRetry();
     Mono<Void> persistTerminalFailures =
         terminalFailures.isEmpty()
             ? Mono.empty()
@@ -358,12 +358,12 @@ public class FcmStreamConsumer {
     }
   }
 
-  private Mono<String> serialize(FcmNotificationEvent event) {
+  private Mono<String> serialize(FcmNotificationMessage event) {
     return Mono.fromCallable(() -> objectMapper.writeValueAsString(event));
   }
 
-  private FcmNotificationEvent withTargets(FcmNotificationEvent event, List<Long> memberIds) {
-    return new FcmNotificationEvent(
+  private FcmNotificationMessage withTargets(FcmNotificationMessage event, List<Long> memberIds) {
+    return new FcmNotificationMessage(
         event.eventId(),
         event.type(),
         memberIds,
@@ -374,7 +374,7 @@ public class FcmStreamConsumer {
         event.retryCount());
   }
 
-  private void validate(FcmNotificationEvent event) {
+  private void validate(FcmNotificationMessage event) {
     if (event == null) {
       throw new IllegalArgumentException("FCM 이벤트가 비어 있습니다");
     }

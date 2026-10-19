@@ -1,9 +1,9 @@
 package com.catxi.worker.notification.lifecycle;
 
-import com.catxi.worker.notification.metrics.FcmQueueMetrics;
+import com.catxi.worker.notification.metrics.NotificationWorkerMetrics;
 import com.catxi.worker.notification.outbox.FcmOutboxPoller;
-import com.catxi.worker.notification.stream.FcmStreamConsumer;
-import com.catxi.worker.notification.stream.RedisStreamStore;
+import com.catxi.worker.notification.redis.FcmStreamConsumer;
+import com.catxi.worker.notification.redis.RedisStreamStore;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
@@ -27,7 +27,7 @@ public class NotificationWorkerLifecycle implements HealthIndicator {
   private final ObjectProvider<RedisStreamStore> streamStoreProvider;
   private final ObjectProvider<FcmOutboxPoller> outboxPollerProvider;
   private final ObjectProvider<FcmStreamConsumer> streamConsumerProvider;
-  private final ObjectProvider<FcmQueueMetrics> queueMetricsProvider;
+  private final ObjectProvider<NotificationWorkerMetrics> queueMetricsProvider;
   private final AtomicBoolean ready;
   private Disposable startupSubscription;
   private boolean started;
@@ -36,7 +36,7 @@ public class NotificationWorkerLifecycle implements HealthIndicator {
       ObjectProvider<RedisStreamStore> streamStoreProvider,
       ObjectProvider<FcmOutboxPoller> outboxPollerProvider,
       ObjectProvider<FcmStreamConsumer> streamConsumerProvider,
-      ObjectProvider<FcmQueueMetrics> queueMetricsProvider,
+      ObjectProvider<NotificationWorkerMetrics> queueMetricsProvider,
       @Value("${fcm.notifications.enabled:false}") boolean notificationsEnabled) {
     this.streamStoreProvider = streamStoreProvider;
     this.outboxPollerProvider = outboxPollerProvider;
@@ -58,7 +58,7 @@ public class NotificationWorkerLifecycle implements HealthIndicator {
       return;
     }
 
-    FcmQueueMetrics queueMetrics = queueMetricsProvider.getIfAvailable();
+    NotificationWorkerMetrics queueMetrics = queueMetricsProvider.getIfAvailable();
     if (queueMetrics != null) {
       queueMetrics.start();
     }
@@ -91,7 +91,7 @@ public class NotificationWorkerLifecycle implements HealthIndicator {
       startupSubscription.dispose();
       startupSubscription = null;
     }
-    FcmQueueMetrics queueMetrics = queueMetricsProvider.getIfAvailable();
+    NotificationWorkerMetrics queueMetrics = queueMetricsProvider.getIfAvailable();
     if (queueMetrics != null) {
       queueMetrics.stop();
     }

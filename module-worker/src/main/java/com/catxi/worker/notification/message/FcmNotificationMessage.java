@@ -1,10 +1,10 @@
-package com.catxi.worker.notification.event;
+package com.catxi.worker.notification.message;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-public record FcmNotificationEvent(
+public record FcmNotificationMessage(
     String eventId,
     NotificationType type,
     List<Long> targetMemberIds,
@@ -14,13 +14,13 @@ public record FcmNotificationEvent(
     LocalDateTime createdAt,
     int retryCount) {
 
-  public FcmNotificationEvent {
+  public FcmNotificationMessage {
     targetMemberIds = List.copyOf(targetMemberIds);
     data = Map.copyOf(data);
   }
 
-  public FcmNotificationEvent withIncrementedRetry() {
-    return new FcmNotificationEvent(
+  public FcmNotificationMessage withIncrementedRetry() {
+    return new FcmNotificationMessage(
         eventId,
         type,
         targetMemberIds,
@@ -31,8 +31,8 @@ public record FcmNotificationEvent(
         Math.incrementExact(retryCount));
   }
 
-  public FcmNotificationEvent forReplay(String replayEventId) {
-    return new FcmNotificationEvent(
+  public FcmNotificationMessage forReplay(String replayEventId) {
+    return new FcmNotificationMessage(
         replayEventId, type, targetMemberIds, title, body, data, createdAt, 0);
   }
 

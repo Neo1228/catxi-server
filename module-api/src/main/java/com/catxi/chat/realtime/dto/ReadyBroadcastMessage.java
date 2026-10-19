@@ -3,7 +3,7 @@ package com.catxi.chat.realtime.dto;
 import com.catxi.chat.domain.ReadyType;
 import java.time.LocalDateTime;
 
-public record ReadyMessageResponse(
+public record ReadyBroadcastMessage(
     ReadyType type,
     Long roomId,
     Long senderId,
@@ -11,9 +11,9 @@ public record ReadyMessageResponse(
     String senderName,
     String content,
     LocalDateTime sentAt) {
-  public static ReadyMessageResponse readyRequest(
+  public static ReadyBroadcastMessage readyRequest(
       Long roomId, Long senderId, String senderEmail, String senderName) {
-    return new ReadyMessageResponse(
+    return new ReadyBroadcastMessage(
         ReadyType.READY_REQUEST,
         roomId,
         senderId,
@@ -23,9 +23,9 @@ public record ReadyMessageResponse(
         LocalDateTime.now());
   }
 
-  public static ReadyMessageResponse readyAccept(
+  public static ReadyBroadcastMessage readyAccept(
       Long roomId, Long senderId, String senderEmail, String senderName) {
-    return new ReadyMessageResponse(
+    return new ReadyBroadcastMessage(
         ReadyType.READY_ACCEPT,
         roomId,
         senderId,
@@ -35,9 +35,9 @@ public record ReadyMessageResponse(
         LocalDateTime.now());
   }
 
-  public static ReadyMessageResponse readyDeny(
+  public static ReadyBroadcastMessage readyDeny(
       Long roomId, Long senderId, String senderEmail, String senderName) {
-    return new ReadyMessageResponse(
+    return new ReadyBroadcastMessage(
         ReadyType.READY_DENY,
         roomId,
         senderId,

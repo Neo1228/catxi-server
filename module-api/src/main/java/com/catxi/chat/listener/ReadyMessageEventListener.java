@@ -1,7 +1,7 @@
 package com.catxi.chat.listener;
 
 import com.catxi.chat.event.ReadyMessageEvent;
-import com.catxi.chat.realtime.dto.ReadyMessageResponse;
+import com.catxi.chat.realtime.dto.ReadyBroadcastMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -30,16 +30,16 @@ public class ReadyMessageEventListener {
     }
   }
 
-  private ReadyMessageResponse toResponse(ReadyMessageEvent event) {
+  private ReadyBroadcastMessage toResponse(ReadyMessageEvent event) {
     return switch (event.type()) {
       case READY_REQUEST ->
-          ReadyMessageResponse.readyRequest(
+          ReadyBroadcastMessage.readyRequest(
               event.roomId(), event.senderId(), event.senderEmail(), event.senderName());
       case READY_ACCEPT ->
-          ReadyMessageResponse.readyAccept(
+          ReadyBroadcastMessage.readyAccept(
               event.roomId(), event.senderId(), event.senderEmail(), event.senderName());
       case READY_DENY ->
-          ReadyMessageResponse.readyDeny(
+          ReadyBroadcastMessage.readyDeny(
               event.roomId(), event.senderId(), event.senderEmail(), event.senderName());
     };
   }

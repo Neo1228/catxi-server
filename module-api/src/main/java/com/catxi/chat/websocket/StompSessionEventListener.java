@@ -1,7 +1,6 @@
-package com.catxi.chat.listener;
+package com.catxi.chat.websocket;
 
 import com.catxi.chat.realtime.ChatPresenceService;
-import com.catxi.chat.websocket.RoomSubscriptionRegistry;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -21,7 +20,7 @@ import org.springframework.web.socket.messaging.SessionUnsubscribeEvent;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class StompEventListener {
+public class StompSessionEventListener {
   private final Set<String> sessions = ConcurrentHashMap.newKeySet();
   private final Map<String, SessionPresence> sessionPresence = new ConcurrentHashMap<>();
   private final ChatPresenceService chatPresenceService;

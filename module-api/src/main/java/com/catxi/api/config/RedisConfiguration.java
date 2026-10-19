@@ -1,6 +1,6 @@
 package com.catxi.api.config;
 
-import com.catxi.chat.realtime.RedisPubSubService;
+import com.catxi.chat.realtime.RedisChatBroadcastListener;
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.SocketOptions;
 import jakarta.annotation.PreDestroy;
@@ -122,7 +122,7 @@ public class RedisConfiguration {
   @Bean
   public RedisMessageListenerContainer redisMessageListenerContainer(
       @Qualifier("chatRedisConnectionFactory") RedisConnectionFactory cf,
-      RedisPubSubService listener,
+      RedisChatBroadcastListener listener,
       @Qualifier("redisPubSubExecutor") ThreadPoolTaskExecutor redisPubSubExecutor) {
     RedisMessageListenerContainer container = new RedisMessageListenerContainer();
     container.setConnectionFactory(cf);

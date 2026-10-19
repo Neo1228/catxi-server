@@ -1,7 +1,7 @@
 package com.catxi.worker.notification.outbox;
 
 import com.catxi.worker.notification.deadletter.DeadLetterRepository;
-import com.catxi.worker.notification.stream.RedisStreamStore;
+import com.catxi.worker.notification.redis.RedisStreamStore;
 import java.time.Duration;
 import java.util.UUID;
 import java.util.function.Supplier;

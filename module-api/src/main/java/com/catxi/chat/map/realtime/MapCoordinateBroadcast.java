@@ -1,6 +1,6 @@
-package com.catxi.chat.realtime.dto;
+package com.catxi.chat.map.realtime;
 
-public record ChatCoordinateBroadcast(
+public record MapCoordinateBroadcast(
     Long roomId,
     String email,
     String name,

@@ -1,7 +1,6 @@
 package com.catxi.chat.map.realtime;
 
 import com.catxi.chat.map.domain.MapCoordinate;
-import com.catxi.chat.realtime.dto.ChatCoordinateBroadcast;
 import com.catxi.common.api.error.CommonErrorCode;
 import com.catxi.common.api.exception.CatxiException;
 import lombok.RequiredArgsConstructor;
@@ -22,8 +21,8 @@ public class MapCoordinatePublisher {
 
   public void publish(MapCoordinate coordinate) {
     try {
-      ChatCoordinateBroadcast message =
-          new ChatCoordinateBroadcast(
+      MapCoordinateBroadcast message =
+          new MapCoordinateBroadcast(
               coordinate.roomId(),
               coordinate.email(),
               coordinate.memberName(),

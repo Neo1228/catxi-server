@@ -1,4 +1,4 @@
-package com.catxi.worker.notification.stream;
+package com.catxi.worker.notification.redis;
 
 import java.util.List;
 import java.util.Map;

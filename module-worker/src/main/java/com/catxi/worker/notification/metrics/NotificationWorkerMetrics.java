@@ -1,6 +1,6 @@
 package com.catxi.worker.notification.metrics;
 
-import com.catxi.worker.notification.stream.RedisStreamStore;
+import com.catxi.worker.notification.redis.RedisStreamStore;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
@@ -18,9 +18,9 @@ import reactor.core.publisher.Mono;
 
 @Component
 @ConditionalOnProperty(name = "fcm.worker.enabled", havingValue = "true")
-public class FcmQueueMetrics {
+public class NotificationWorkerMetrics {
 
-  private static final Logger log = LoggerFactory.getLogger(FcmQueueMetrics.class);
+  private static final Logger log = LoggerFactory.getLogger(NotificationWorkerMetrics.class);
   private static final Duration SAMPLE_INTERVAL = Duration.ofSeconds(30);
   private static final Duration SAMPLE_TIMEOUT = Duration.ofSeconds(10);
   // shortcut: 10,001건까지만 세어 DB 조회 비용을 제한하고, 경보는 그보다 낮은 임계치로 건다.
@@ -37,7 +37,7 @@ public class FcmQueueMetrics {
   private final AtomicLong lastSuccessfulRefreshEpochSeconds = new AtomicLong();
   private Disposable subscription;
 
-  public FcmQueueMetrics(
+  public NotificationWorkerMetrics(
       DatabaseClient databaseClient,
       RedisStreamStore streamStore,
       @Value("${fcm.outbox.batch-size}") int batchSize,

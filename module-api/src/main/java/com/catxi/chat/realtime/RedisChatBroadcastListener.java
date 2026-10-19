@@ -1,10 +1,10 @@
 package com.catxi.chat.realtime;
 
 import com.catxi.chat.event.ChatRoomAccessRevoked;
-import com.catxi.chat.realtime.dto.ChatCoordinateBroadcast;
+import com.catxi.chat.map.realtime.MapCoordinateBroadcast;
 import com.catxi.chat.realtime.dto.ChatMessageBroadcast;
 import com.catxi.chat.realtime.dto.ParticipantsUpdateMessage;
-import com.catxi.chat.realtime.dto.ReadyMessageResponse;
+import com.catxi.chat.realtime.dto.ReadyBroadcastMessage;
 import com.catxi.chat.realtime.dto.RoomEventMessage;
 import com.catxi.chat.websocket.StompSubscriptionRevoker;
 import java.nio.charset.StandardCharsets;
@@ -12,18 +12,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 @Slf4j
-@Service
-public class RedisPubSubService implements MessageListener {
+@Component
+public class RedisChatBroadcastListener implements MessageListener {
   private final SimpMessageSendingOperations messageTemplate;
   private final ObjectMapper objectMapper;
   private final StompSubscriptionRevoker subscriptionRevoker;
 
-  public RedisPubSubService(
+  public RedisChatBroadcastListener(
       SimpMessageSendingOperations messageTemplate,
       ObjectMapper objectMapper,
       StompSubscriptionRevoker subscriptionRevoker) {
@@ -45,12 +45,12 @@ public class RedisPubSubService implements MessageListener {
         messageTemplate.convertAndSend("/topic/" + chatMessageDto.roomId(), chatMessageDto);
 
       } else if ("map".equals(channel)) {
-        ChatCoordinateBroadcast coordinateRes =
-            objectMapper.readValue(payload, ChatCoordinateBroadcast.class);
+        MapCoordinateBroadcast coordinateRes =
+            objectMapper.readValue(payload, MapCoordinateBroadcast.class);
         messageTemplate.convertAndSend("/topic/map/" + coordinateRes.roomId(), coordinateRes);
       } else if (channel.startsWith("ready:")) {
-        ReadyMessageResponse readyMessage =
-            objectMapper.readValue(payload, ReadyMessageResponse.class);
+        ReadyBroadcastMessage readyMessage =
+            objectMapper.readValue(payload, ReadyBroadcastMessage.class);
         messageTemplate.convertAndSend("/topic/ready/" + readyMessage.roomId(), readyMessage);
       } else if (channel.startsWith("participants:")) {
         ParticipantsUpdateMessage update =

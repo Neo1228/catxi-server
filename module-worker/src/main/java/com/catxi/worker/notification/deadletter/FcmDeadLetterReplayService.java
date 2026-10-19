@@ -1,7 +1,7 @@
 package com.catxi.worker.notification.deadletter;
 
 import com.catxi.worker.notification.deadletter.DeadLetterRepository.DeadLetterRecord;
-import com.catxi.worker.notification.event.FcmNotificationEvent;
+import com.catxi.worker.notification.message.FcmNotificationMessage;
 import com.catxi.worker.notification.outbox.FcmOutboxRepository;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -58,7 +58,7 @@ public class FcmDeadLetterReplayService {
         .flatMap(
             originalEvent -> {
               String replayEventId = UUID.randomUUID().toString();
-              FcmNotificationEvent replayEvent = originalEvent.forReplay(replayEventId);
+              FcmNotificationMessage replayEvent = originalEvent.forReplay(replayEventId);
               return Mono.fromCallable(() -> objectMapper.writeValueAsString(replayEvent))
                   .flatMap(
                       payload ->
@@ -79,7 +79,7 @@ public class FcmDeadLetterReplayService {
             });
   }
 
-  private FcmNotificationEvent parseOriginalEvent(DeadLetterRecord deadLetter) {
+  private FcmNotificationMessage parseOriginalEvent(DeadLetterRecord deadLetter) {
     if (deadLetter.eventId() == null || deadLetter.eventId().isBlank()) {
       throw new IllegalStateException("이벤트 ID가 없는 FCM DLQ 기록은 재처리할 수 없습니다");
     }
@@ -92,7 +92,7 @@ public class FcmDeadLetterReplayService {
       if (payload.stripLeading().startsWith("\"")) {
         payload = objectMapper.readValue(payload, String.class);
       }
-      FcmNotificationEvent event = objectMapper.readValue(payload, FcmNotificationEvent.class);
+      FcmNotificationMessage event = objectMapper.readValue(payload, FcmNotificationMessage.class);
       if (event == null || event.type() == null || event.targetMemberIds().isEmpty()) {
         throw new IllegalStateException("알림 유형 또는 대상이 없는 DLQ 기록은 재처리할 수 없습니다");
       }
