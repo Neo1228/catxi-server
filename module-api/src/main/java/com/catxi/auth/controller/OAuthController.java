@@ -8,6 +8,7 @@ import com.catxi.auth.security.RefreshTokenCookie;
 import com.catxi.auth.service.OAuthLoginService;
 import com.catxi.auth.service.TokenService;
 import com.catxi.common.api.ApiResponse;
+import com.catxi.member.service.MemberService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -28,6 +29,7 @@ public class OAuthController {
 
   private final ObjectProvider<OAuthLoginService> oAuthLoginServiceProvider;
   private final TokenService tokenService;
+  private final MemberService memberService;
 
   @Operation(summary = "인가코드 로그인", description = "카카오에서 인가코드를 받아와 JWT를 발급해줍니다.")
   @PostMapping("/api/members/login")
@@ -72,15 +74,14 @@ public class OAuthController {
   public ApiResponse<?> completeSignup(
       @RequestBody @Valid AuthDTO.KakaoSignupRequest dto, Principal principal) {
 
-    tokenService.completeKakaoSignup(principal.getName(), dto.nickname(), dto.studentNo());
+    memberService.completeKakaoSignup(principal.getName(), dto.nickname(), dto.studentNo());
     return ApiResponse.success("추가 회원정보 등록 완료");
   }
 
   @Operation(summary = "닉네임 중복 조회")
   @GetMapping("/api/auth/signUp/catxi/checkNN")
-  public ApiResponse<Boolean> checkNN(@RequestParam("nickname") String nickname) {
-    boolean isDuplicate = tokenService.isNNDuplicate(nickname);
-    return ApiResponse.success(isDuplicate);
+  public ApiResponse<Boolean> isNicknameInUse(@RequestParam("nickname") String nickname) {
+    return ApiResponse.success(memberService.isNicknameInUse(nickname));
   }
 
   // Reissue
@@ -126,7 +127,4 @@ public class OAuthController {
     }
     return service;
   }
-
-  // TODO: 회원 탈퇴
-
 }

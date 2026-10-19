@@ -13,7 +13,6 @@ import java.net.URI;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -48,10 +47,10 @@ public class MemberController {
     return ResponseEntity.created(URI.create("/api/members/" + id)).body(new MemberIdResponse(id));
   }
 
-  @Operation(summary = "학생 이름 입력시 학번 반환")
+  @Operation(summary = "닉네임으로 학번 조회")
   @GetMapping("/stdNo")
-  public String getStudentNo(@RequestParam("nickname") String nickname) {
-    return memberService.findStudentNoByNickname(nickname);
+  public String getStudentNumber(@RequestParam("nickname") String nickname) {
+    return memberService.findStudentNumberByNickname(nickname);
   }
 
   @Operation(summary = "회원탈퇴 API")
@@ -90,14 +89,13 @@ public class MemberController {
 
   @Operation(summary = "이용 기록 페이지 조회", description = "최신 기록부터 조회하며 한 페이지는 최대 100건입니다.")
   @GetMapping("/history/all")
-  public ResponseEntity<Slice<MatchHistoryResponse>> getMyMatchHistoryWithScroll(
+  public ResponseEntity<Slice<MatchHistoryResponse>> getMyMatchHistoryPage(
       @AuthenticationPrincipal UserDetails userDetails,
-      @PageableDefault(size = 2, sort = "createdAt", direction = Sort.Direction.DESC)
-          Pageable pageable) {
+      @PageableDefault(size = 20) Pageable pageable) {
     String email = userDetails.getUsername();
     Slice<MatchHistoryResponse> slice =
         matchHistoryService
-            .getScrollHistory(email, pageable)
+            .getMatchHistoryPage(email, pageable)
             .map(
                 history ->
                     new MatchHistoryResponse(

@@ -78,7 +78,7 @@ public class MatchHistoryService {
     return toView(history, user.getMemberName());
   }
 
-  public Slice<MatchHistoryView> getScrollHistory(String email, Pageable pageable) {
+  public Slice<MatchHistoryView> getMatchHistoryPage(String email, Pageable pageable) {
     Member user =
         memberRepository
             .findByEmail(email)

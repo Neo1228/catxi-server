@@ -1,10 +1,10 @@
 package com.catxi.auth.service;
 
 import com.catxi.auth.error.AuthErrorCode;
-import com.catxi.auth.redis.RefreshTokenRepository;
-import com.catxi.auth.redis.TokenBlacklistRepository;
 import com.catxi.auth.jwt.JwtTokenParser;
 import com.catxi.auth.jwt.JwtTokenProvider;
+import com.catxi.auth.redis.RefreshTokenRepository;
+import com.catxi.auth.redis.TokenBlacklistRepository;
 import com.catxi.common.api.exception.CatxiException;
 import com.catxi.member.domain.MemberStatus;
 import com.catxi.member.service.MemberService;
@@ -128,14 +128,6 @@ public class TokenService {
     } catch (Exception e) {
       log.warn("Logout processing failed: {}", e.getClass().getSimpleName());
     }
-  }
-
-  public void completeKakaoSignup(String email, String nickname, String studentNo) {
-    memberService.completeKakaoSignup(email, nickname, studentNo);
-  }
-
-  public boolean isNNDuplicate(String nickname) {
-    return memberService.isNicknameInUse(nickname);
   }
 
   // 리프레시토큰 검증

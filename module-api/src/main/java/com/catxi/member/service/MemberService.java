@@ -299,7 +299,7 @@ public class MemberService {
         member.getMatchCount());
   }
 
-  public String findStudentNoByNickname(String nickname) {
+  public String findStudentNumberByNickname(String nickname) {
     return memberRepository
         .findByNickname(nickname)
         .map(Member::getStudentNo)
