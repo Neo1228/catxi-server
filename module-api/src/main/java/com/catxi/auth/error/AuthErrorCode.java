@@ -16,7 +16,8 @@ public enum AuthErrorCode implements ErrorCode {
   TOKEN_SIGNATURE_INVALID(HttpStatus.UNAUTHORIZED, "ACCESS407", "토큰 서명이 올바르지 않습니다."),
   TOKEN_BLACKLISTED(HttpStatus.UNAUTHORIZED, "ACCESS408", "블랙리스트에 등록된 토큰입니다."),
   USER_BLACKLISTED(HttpStatus.FORBIDDEN, "ACCESS409", "블랙리스트에 등록된 사용자입니다."),
-  TOKEN_CLAIM_INVALID(HttpStatus.UNAUTHORIZED, "ACCESS410", "토큰 클레임 정보가 유효하지 않습니다.");
+  TOKEN_CLAIM_INVALID(HttpStatus.UNAUTHORIZED, "ACCESS410", "토큰 클레임 정보가 유효하지 않습니다."),
+  SIGNUP_REQUIRED(HttpStatus.FORBIDDEN, "ACCESS411", "가입을 완료해야 서비스를 이용할 수 있습니다.");
 
   private final HttpStatus httpStatus;
   private final String code;

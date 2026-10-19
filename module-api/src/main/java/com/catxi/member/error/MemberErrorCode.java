@@ -17,6 +17,7 @@ public enum MemberErrorCode implements ErrorCode {
   INVALID_PASSWORD_LENGTH(HttpStatus.BAD_REQUEST, "MEMBER406", "비밀번호는 8자 이상 72바이트 이하여야 합니다."),
   INVALID_KAKAO_EMAIL(HttpStatus.UNAUTHORIZED, "MEMBER407", "인증된 카카오 계정 이메일이 필요합니다."),
   INVALID_KAKAO_PROFILE(HttpStatus.BAD_REQUEST, "MEMBER408", "카카오 프로필 닉네임 정보가 필요합니다."),
+  SIGNUP_ALREADY_COMPLETED(HttpStatus.CONFLICT, "MEMBER409", "가입 절차를 진행할 수 없는 회원 상태입니다."),
 
   MATCH_NOT_FOUND(HttpStatus.NOT_FOUND, "MATCH404", "이용내역을 찾을 수 없습니다."),
   MATCH_HISTORY_FORBIDDEN(HttpStatus.FORBIDDEN, "MATCH403", "본인의 이용 내역만 조회할 수 있습니다.");

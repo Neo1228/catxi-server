@@ -100,8 +100,13 @@ public class SecurityConfiguration {
                 .denyAll();
           }
           auth.requestMatchers("/actuator/health/**", "/actuator/prometheus").permitAll();
+          auth.requestMatchers(HttpMethod.PATCH, "/api/auth/signUp/catxi").hasRole("PENDING");
+          auth.requestMatchers(HttpMethod.GET, "/api/auth/signUp/catxi/checkNN")
+              .hasAnyRole("PENDING", "USER", "ADMIN");
+          auth.requestMatchers(HttpMethod.POST, "/api/auth/logout")
+              .hasAnyRole("PENDING", "USER", "ADMIN");
           auth.requestMatchers("/api/admin/**").hasRole("ADMIN");
-          auth.anyRequest().authenticated();
+          auth.anyRequest().hasAnyRole("USER", "ADMIN");
         });
 
     // cors 설정 (origin 명시적 허용)

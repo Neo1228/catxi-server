@@ -187,8 +187,12 @@ public class MemberService {
   public void completeKakaoSignup(String email, String nickname, String studentNo) {
     Member member =
         memberRepository
-            .findByEmail(email)
+            .findByEmailForUpdate(email)
             .orElseThrow(() -> new CatxiException(MemberErrorCode.MEMBER_NOT_FOUND));
+
+    if (member.getStatus() != MemberStatus.PENDING) {
+      throw new CatxiException(MemberErrorCode.SIGNUP_ALREADY_COMPLETED);
+    }
 
     if (nickname == null || nickname.length() > 9) {
       throw new CatxiException(MemberErrorCode.INVALID_NICKNAME_LENGTH);

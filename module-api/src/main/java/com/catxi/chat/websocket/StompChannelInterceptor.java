@@ -172,6 +172,9 @@ public class StompChannelInterceptor implements ChannelInterceptor {
   }
 
   private void validateMember(MemberService.MemberAccount member) {
+    if (member.status() == MemberStatus.PENDING) {
+      throw new CatxiException(AuthErrorCode.SIGNUP_REQUIRED);
+    }
     if (member.status() == MemberStatus.INACTIVE
         || blacklistService.isUserBlacklisted(member.id())) {
       throw new CatxiException(AuthErrorCode.ACCESS_FORBIDDEN);

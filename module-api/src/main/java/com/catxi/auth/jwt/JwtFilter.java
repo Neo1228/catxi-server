@@ -154,8 +154,8 @@ public class JwtFilter extends OncePerRequestFilter {
   }
 
   private void setAuthentication(MemberService.MemberAccount member) {
-    MemberUserDetails memberUserDetails =
-        new MemberUserDetails(member.email(), null, member.role());
+    String role = member.status() == MemberStatus.PENDING ? "ROLE_PENDING" : member.role();
+    MemberUserDetails memberUserDetails = new MemberUserDetails(member.email(), null, role);
     Authentication authToken =
         new UsernamePasswordAuthenticationToken(
             memberUserDetails, null, memberUserDetails.getAuthorities());

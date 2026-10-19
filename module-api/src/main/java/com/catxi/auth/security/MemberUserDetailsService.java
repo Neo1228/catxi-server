@@ -33,7 +33,7 @@ public class MemberUserDetailsService implements UserDetailsService {
         throw new DisabledException("탈퇴한 회원입니다.");
       case PENDING:
         // 인증 대기 상태의 회원도 로그인은 허용합니다.
-        return new MemberUserDetails(member.email(), member.password(), member.role());
+        return new MemberUserDetails(member.email(), member.password(), "ROLE_PENDING");
       case ACTIVE:
         return new MemberUserDetails(member.email(), member.password(), member.role());
       default:
