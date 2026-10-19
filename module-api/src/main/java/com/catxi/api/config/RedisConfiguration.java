@@ -112,8 +112,8 @@ public class RedisConfiguration {
     return executor;
   }
 
-  @Bean({"readyTimeoutScheduler", "taskScheduler"})
-  public ThreadPoolTaskScheduler readyTimeoutScheduler() {
+  @Bean({"readyTimeoutTaskScheduler", "taskScheduler"})
+  public ThreadPoolTaskScheduler readyTimeoutTaskScheduler() {
     ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
     scheduler.setPoolSize(4);
     scheduler.setThreadNamePrefix("ready-timeout-");

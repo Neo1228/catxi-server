@@ -29,7 +29,7 @@ public class ReadyTimeoutScheduler {
   private final ReadyService readyService;
 
   public ReadyTimeoutScheduler(
-      @Qualifier("readyTimeoutScheduler") TaskScheduler taskScheduler,
+      @Qualifier("readyTimeoutTaskScheduler") TaskScheduler taskScheduler,
       ChatRoomRepository chatRoomRepository,
       ReadyService readyService,
       ReadyResultPublisher readyResultPublisher) {
