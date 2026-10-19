@@ -38,3 +38,4 @@ WebSocket으로 나가는 채팅 프레임마다 Redis에서 권한 revision을 
 FCM 요청에는 재시도 동안 유지되는 `eventId`가 포함되며 채팅 알림에는 `messageId`도 포함됩니다. FCM이 요청을 수락한 뒤 응답만 유실되면 재시도로 같은 푸시가 다시 도착할 수 있으므로 클라이언트는 `eventId`와 `messageId`로 중복을 제거해야 합니다.
 
 워커의 FCM 전송과 채팅 브로드캐스트는 `FCM_NOTIFICATIONS_ENABLED`, `CHAT_BROADCAST_WORKER_ENABLED`로 각각 제어합니다.
+FCM 실패 이력을 일회성으로 재처리할 때는 채팅 워커를 함께 실행할 수 없으므로 `CHAT_BROADCAST_WORKER_ENABLED=false`로 설정해야 합니다.
