@@ -15,12 +15,9 @@ public interface MatchHistoryRepository extends JpaRepository<MatchHistory, Long
 
   @Query(
 """
-    SELECT DISTINCT m FROM MatchHistory m
-    LEFT JOIN m.participants participant
+    SELECT m FROM MatchHistory m
     WHERE m.user.email = :email
-       OR participant = :nickname
     ORDER BY m.createdAt DESC, m.id DESC
 """)
-  Slice<MatchHistory> findHistoriesByUserOrParticipant(
-      @Param("email") String email, @Param("nickname") String nickname, Pageable pageable);
+  Slice<MatchHistory> findByUserEmail(@Param("email") String email, Pageable pageable);
 }

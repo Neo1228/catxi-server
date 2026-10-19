@@ -92,8 +92,7 @@ public class MatchHistoryService {
             Math.min(Math.max(requestedSize, 1), MAX_HISTORY_PAGE_SIZE),
             Sort.unsorted());
     String memberName = user.getMemberName();
-    Slice<MatchHistory> histories =
-        matchHistoryRepository.findHistoriesByUserOrParticipant(email, memberName, boundedPageable);
+    Slice<MatchHistory> histories = matchHistoryRepository.findByUserEmail(email, boundedPageable);
 
     return histories.map(history -> toView(history, memberName));
   }
