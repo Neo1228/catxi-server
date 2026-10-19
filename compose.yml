@@ -46,7 +46,7 @@ services:
       - catxi-logs:/app/logs
     networks:
       - catxi-network
-    mem_limit: 768m
+    mem_limit: 640m
     cpus: 1.0
     read_only: true
     tmpfs:
@@ -90,7 +90,7 @@ services:
           create_host_path: false
     networks:
       - catxi-network
-    mem_limit: 768m
+    mem_limit: 512m
     cpus: 1.0
     read_only: true
     tmpfs:
