@@ -1,4 +1,4 @@
-package com.catxi.chat.realtime;
+package com.catxi.chat.presence;
 
 import com.catxi.member.service.MemberService;
 import java.time.Duration;
@@ -104,7 +104,7 @@ public class ChatPresenceService {
     try {
       return Boolean.TRUE.equals(
           redisTemplate.hasKey(
-              ChatPresenceKeys.activeMarker(roomId.toString(), memberId.toString())));
+              ChatPresenceRedisKeys.activeMarkerKey(roomId.toString(), memberId.toString())));
     } catch (Exception e) {
       log.warn(
           "채팅방 활성 상태를 확인하지 못했습니다: roomId={}, errorType={}", roomId, e.getClass().getSimpleName());
@@ -115,10 +115,10 @@ public class ChatPresenceService {
   private void updatePresence(Long memberId, Long roomId, String presenceId, boolean isActive) {
     String room = roomId.toString();
     String member = memberId.toString();
-    String sessionKey = ChatPresenceKeys.sessionRegistry(room, member);
-    String markerKey = ChatPresenceKeys.activeMarker(room, member);
+    String sessionKey = ChatPresenceRedisKeys.sessionRegistryKey(room, member);
+    String markerKey = ChatPresenceRedisKeys.activeMarkerKey(room, member);
     long now = System.currentTimeMillis();
-    long leaseMillis = ChatPresenceKeys.LEASE.toMillis();
+    long leaseMillis = ChatPresenceRedisKeys.LEASE_DURATION.toMillis();
 
     if (isActive) {
       redisTemplate.execute(

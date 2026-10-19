@@ -2,7 +2,7 @@ package com.catxi.chat.listener;
 
 import com.catxi.chat.event.ChatParticipantKicked;
 import com.catxi.chat.event.ChatRoomParticipantsUpdated;
-import com.catxi.chat.realtime.dto.ParticipantsUpdateMessage;
+import com.catxi.chat.realtime.message.ParticipantsUpdateMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;

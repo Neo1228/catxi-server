@@ -1,4 +1,4 @@
-package com.catxi.chat.realtime.dto;
+package com.catxi.chat.realtime.message;
 
 import com.catxi.chat.domain.ReadyType;
 import java.time.LocalDateTime;

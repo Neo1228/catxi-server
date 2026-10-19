@@ -23,7 +23,7 @@ public class ChatRoomOutboundGuard implements ChannelInterceptor {
       return message;
     }
 
-    Long roomId = StompHandler.extractSubscribedRoomId(destination);
+    Long roomId = StompChannelInterceptor.extractSubscribedRoomId(destination);
     String sessionId = accessor.getSessionId();
     String subscriptionId = accessor.getSubscriptionId();
     if (roomId == null || sessionId == null || subscriptionId == null) {
@@ -76,7 +76,7 @@ public class ChatRoomOutboundGuard implements ChannelInterceptor {
       return;
     }
 
-    Long roomId = StompHandler.extractSubscribedRoomId(destination);
+    Long roomId = StompChannelInterceptor.extractSubscribedRoomId(destination);
     String sessionId = accessor.getSessionId();
     String subscriptionId = accessor.getSubscriptionId();
     if (roomId != null && sessionId != null && subscriptionId != null) {
@@ -87,6 +87,6 @@ public class ChatRoomOutboundGuard implements ChannelInterceptor {
   private boolean isRoomDeletedDestination(String destination) {
     return destination.startsWith("/topic/room/")
         && destination.endsWith("/deleted")
-        && StompHandler.extractSubscribedRoomId(destination) != null;
+        && StompChannelInterceptor.extractSubscribedRoomId(destination) != null;
   }
 }

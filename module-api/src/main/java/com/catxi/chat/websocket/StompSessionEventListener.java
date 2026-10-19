@@ -1,6 +1,6 @@
 package com.catxi.chat.websocket;
 
-import com.catxi.chat.realtime.ChatPresenceService;
+import com.catxi.chat.presence.ChatPresenceService;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;

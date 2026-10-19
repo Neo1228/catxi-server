@@ -13,15 +13,15 @@ import org.springframework.web.socket.config.annotation.WebSocketTransportRegist
 @EnableWebSocketMessageBroker
 public class StompWebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
-  private final StompHandler stompHandler;
+  private final StompChannelInterceptor stompChannelInterceptor;
   private final ChatRoomOutboundGuard chatRoomOutboundGuard;
   private final CorsProperties corsProperties;
 
   public StompWebSocketConfig(
-      StompHandler stompHandler,
+      StompChannelInterceptor stompChannelInterceptor,
       ChatRoomOutboundGuard chatRoomOutboundGuard,
       CorsProperties corsProperties) {
-    this.stompHandler = stompHandler;
+    this.stompChannelInterceptor = stompChannelInterceptor;
     this.chatRoomOutboundGuard = chatRoomOutboundGuard;
     this.corsProperties = corsProperties;
   }
@@ -62,7 +62,7 @@ public class StompWebSocketConfig implements WebSocketMessageBrokerConfigurer {
   // 연결과 구독 요청에도 인증을 적용하도록 inbound interceptor를 등록합니다.
   @Override
   public void configureClientInboundChannel(ChannelRegistration registration) {
-    registration.interceptors(stompHandler);
+    registration.interceptors(stompChannelInterceptor);
   }
 
   @Override

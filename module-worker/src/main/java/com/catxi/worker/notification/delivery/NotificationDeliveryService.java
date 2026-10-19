@@ -106,7 +106,7 @@ public class NotificationDeliveryService {
     String member = Long.toString(memberId);
     return redisTemplate
         .opsForValue()
-        .get(ChatPresenceKeys.activeMarker(roomId, member))
+        .get(ChatPresenceRedisKeys.activeMarkerKey(roomId, member))
         .hasElement()
         .flatMap(
             legacyMarkerExists ->
@@ -115,7 +115,7 @@ public class NotificationDeliveryService {
                     : redisTemplate
                         .opsForZSet()
                         .count(
-                            ChatPresenceKeys.sessionRegistry(roomId, member),
+                            ChatPresenceRedisKeys.sessionRegistryKey(roomId, member),
                             Range.closed((double) System.currentTimeMillis(), Double.MAX_VALUE))
                         .map(activeSessions -> activeSessions == 0L))
         .onErrorResume(

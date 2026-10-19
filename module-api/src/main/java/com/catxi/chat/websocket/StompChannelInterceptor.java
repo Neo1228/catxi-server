@@ -24,7 +24,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class StompHandler implements ChannelInterceptor {
+public class StompChannelInterceptor implements ChannelInterceptor {
 
   private final JwtTokenParser jwtTokenParser;
   private final ChatRoomService chatRoomService;

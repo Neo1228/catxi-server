@@ -1,7 +1,7 @@
 package com.catxi.chat.listener;
 
 import com.catxi.chat.event.RoomDeletedEvent;
-import com.catxi.chat.realtime.dto.RoomEventMessage;
+import com.catxi.chat.realtime.message.RoomEventMessage;
 import com.catxi.chat.websocket.StompSubscriptionRevoker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

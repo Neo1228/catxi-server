@@ -1,7 +1,7 @@
 package com.catxi.chat.controller;
 
 import com.catxi.chat.dto.ChatActiveStatusRequest;
-import com.catxi.chat.realtime.ChatPresenceService;
+import com.catxi.chat.presence.ChatPresenceService;
 import com.catxi.common.api.ApiResponse;
 import jakarta.validation.Valid;
 import java.security.Principal;

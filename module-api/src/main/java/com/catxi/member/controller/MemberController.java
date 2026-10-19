@@ -1,8 +1,8 @@
 package com.catxi.member.controller;
 
 import com.catxi.common.api.ApiResponse;
-import com.catxi.member.dto.IdResponse;
 import com.catxi.member.dto.MatchHistoryResponse;
+import com.catxi.member.dto.MemberIdResponse;
 import com.catxi.member.dto.MemberProfileResponse;
 import com.catxi.member.dto.SignUpRequest;
 import com.catxi.member.service.MatchHistoryService;
@@ -37,7 +37,7 @@ public class MemberController {
 
   @Operation(summary = "이메일과 비밀번호 회원가입")
   @PostMapping("/signUp")
-  public ResponseEntity<IdResponse> signUp(@RequestBody @Valid SignUpRequest request) {
+  public ResponseEntity<MemberIdResponse> signUp(@RequestBody @Valid SignUpRequest request) {
     Long id =
         memberService.signUp(
             request.getEmail(),
@@ -45,7 +45,7 @@ public class MemberController {
             request.getPassword(),
             request.getStudentNo(),
             request.getNickname());
-    return ResponseEntity.created(URI.create("/api/members/" + id)).body(new IdResponse(id));
+    return ResponseEntity.created(URI.create("/api/members/" + id)).body(new MemberIdResponse(id));
   }
 
   @Operation(summary = "학생 이름 입력시 학번 반환")
