@@ -47,7 +47,7 @@ public class MemberController {
     return ResponseEntity.status(HttpStatus.CREATED).body(new MemberIdResponse(id));
   }
 
-  @Operation(summary = "닉네임으로 학번 조회")
+  @Operation(summary = "닉네임으로 학번 조회", description = "개인정보 보호를 위해 학번 뒷자리 3자리만 반환합니다.")
   @GetMapping("/stdNo")
   public String getStudentNumber(@RequestParam("nickname") String nickname) {
     return memberService.findStudentNumberByNickname(nickname);

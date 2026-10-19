@@ -304,10 +304,19 @@ public class MemberService {
         member.getMatchCount());
   }
 
+  private String maskStudentNumber(String studentNumber) {
+    if (studentNumber.length() <= 3) {
+      return "*".repeat(studentNumber.length());
+    }
+    return "*".repeat(studentNumber.length() - 3)
+        + studentNumber.substring(studentNumber.length() - 3);
+  }
+
   public String findStudentNumberByNickname(String nickname) {
     return memberRepository
         .findByNickname(nickname)
         .map(Member::getStudentNo)
+        .map(this::maskStudentNumber)
         .orElseThrow(() -> new CatxiException(MemberErrorCode.MEMBER_NOT_FOUND));
   }
 
