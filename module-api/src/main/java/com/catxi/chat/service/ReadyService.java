@@ -147,8 +147,7 @@ public class ReadyService {
       List<Long> participantIds = chatParticipantRepository.findMemberIdsByChatRoom(room);
       eventPublisher.publishEvent(new MatchCompletedNotificationRequested(participantIds, roomId));
       chatMessageService.sendSystemMessage(roomId, "모든 참가자가 준비되어 매칭이 완료되었습니다.");
-      return Optional.of(
-          new ReadyTimeoutResult("MATCHED", "모든 참가자가 준비되었습니다. 매칭이 완료되었습니다"));
+      return Optional.of(new ReadyTimeoutResult("MATCHED", "모든 참가자가 준비되었습니다. 매칭이 완료되었습니다"));
     }
 
     List<ChatParticipant> unreadyParticipants =

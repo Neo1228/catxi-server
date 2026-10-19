@@ -76,7 +76,8 @@ public class ReadyTimeoutScheduler {
           .ifPresent(
               result -> {
                 readyResultPublisher.publish(roomId, result.eventType(), result.eventContent());
-                log.info("[ReadyTimeoutScheduler] 방 상태 업데이트 완료: {} at {}", roomId, LocalDateTime.now());
+                log.info(
+                    "[ReadyTimeoutScheduler] 방 상태 업데이트 완료: {} at {}", roomId, LocalDateTime.now());
               });
     } catch (Exception e) {
       try {
